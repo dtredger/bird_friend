@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=<<for>>, initial-scale=1.0">
+    <title>Document</title>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Your Technology</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Technology</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        
+          {% for x in obj.values() %}
+            {% for y in x %}
+              <tr>
+                <td scope="col">{{y}}</td>
+                <td>
+                  <form class="d-flex" action="#" method="post">
+                    <!-- Button -->
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target=#>
+                      edit
+                    </button>
+                  </form>
+                  <form class="d-flex" action="#" method="post">
+                    <input type="hidden" value={{y}} name="text">
+                    <input type="submit" value = "Delete" class="btn btn-secondary" >
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+         {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="content" style="text-align:center">
+      <form class="search" action="{{ url_for("edit")}}" method="post">
+        <button class="btn btn-outline-success" type="submit">Add Technology</button>
+      </form>
+    </div>
+  </body>
+</html>
