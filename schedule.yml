@@ -1,3 +1,0 @@
-# 
-cmd1: import sys
-pathvar: sys.path.append("/opt/anaconda3/lib/python3.7/site-packages")

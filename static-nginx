@@ -1,7 +1,0 @@
-server {
-    root /home/pi/crow_friend/react-ui/out;
-
-    location / {
-    }
-
-}

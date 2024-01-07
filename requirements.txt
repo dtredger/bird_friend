@@ -1,3 +1,0 @@
-pygobject
-playsound
-logger
