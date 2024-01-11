@@ -28,15 +28,12 @@ import time
 import math
 from machine import Pin, PWM
 
-EYE_PIN = 18
-
-
 class Leds:
     def __init__(self, pin_number):
         self.eyes_pwm = PWM(Pin(pin_number))
         self.eyes_pwm.freq(1000)
         self.sleep_time = 0.005
-        self.max_brightness = 0.8
+        self.max_brightness = 1.0
 
     def fade_in(self):
         duty = 0
