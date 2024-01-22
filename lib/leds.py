@@ -5,6 +5,8 @@ class Leds:
     """
     Create an Led object that can be faded in,
     faded out, and set to flash X times.
+    Wiring requires 200 ohm resistor in circuit between GPIO pin `pin_number`
+    and ground.
     """
     def __init__(self, pin_number):
         self.eyes_pwm = PWM(Pin(pin_number))

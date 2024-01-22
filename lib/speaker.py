@@ -5,15 +5,17 @@ from machine import Pin, I2S
 class Speaker:
     """
     Speaker and audio out for bird. Uses I2S audio,
-    which requires 3 pins:
+    which requires 3 pins (in addition to 5v and ground):
     - LRC (Left-Right Clock/Word select)
     - BCLK (Bit Clock/Serial Clock)
     - DIN (Serial Data In)
     Can play test tone, or specific WAV.
-    All WAVs must currently have the same sample_rate (44_100)
+    All WAVs must currently have the same sample_rate (11_000).
+    `play_wav` buffer and bytearray may also need to be adjusted for different
+    files.
     """
     def __init__(self, leftright, bit_clk, data_in, wav_file):
-        self.sample_rate = 44_100
+        self.sample_rate = 11_000
         self.bits = 16
         self.wav_file = wav_file
         self.audio_out = I2S(1,
@@ -24,7 +26,7 @@ class Speaker:
                              bits=self.bits,
                              format=I2S.MONO,
                              rate=self.sample_rate,
-                             ibuf=2000)
+                             ibuf=20000)
 
     def make_tone(self, rate=22_050, frequency=440):
         # create a buffer containing the pure tone samples
@@ -49,10 +51,14 @@ class Speaker:
         self.audio_out.write(samples)
 
     def play_wav(self):
+        """
+        Depending on wav file, seek location and bytearray size may need
+        to be modified (200, 30_000 work well with 25kb 1 second wav)
+        """
         wav = open(self.wav_file, "rb")
-        _ = wav.seek(44)  # advance to first byte of Data section in WAV file
+        _ = wav.seek(200)  # advance to first byte of Data section in WAV file
         # allocate sample array
-        wav_samples = bytearray(10000)
+        wav_samples = bytearray(30_000)
         # memoryview used to reduce heap allocation
         wav_samples_mv = memoryview(wav_samples)
         num_read = wav.readinto(wav_samples_mv)
