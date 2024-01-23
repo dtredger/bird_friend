@@ -16,7 +16,7 @@ Starting with \#5, functionality that could be shared was put into the `lib/` di
 ![Edgar](/3_plastic_crow-edgar/plastic-crow.png)
 
 ### 4) "Ronny" (blue parrot)
-![Ronny](/4_blue_barrot-ronny/ronny.png)
+![Ronny](/4_blue_parrot-ronny/ronny.webp)
 
 ### 5) (white owl)
 (no photo yet)
