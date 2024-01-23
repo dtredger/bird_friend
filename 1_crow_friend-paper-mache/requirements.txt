@@ -1,0 +1,5 @@
+pigpio
+pygame
+playsound
+gpiozero
+python3-RPi.GPIO
