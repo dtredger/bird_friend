@@ -21,26 +21,13 @@ from servos import Servo
 from speaker import Speaker
 
 
-leds = Leds(18)
+leds = Leds(19)
 light_sensor = LightSensor(26)
 servo = Servo(16)
 speaker = Speaker(2, 1, 0, "audio/sf-owl.wav")
 
-INTERVAL_MINUTES = 1 #60
+INTERVAL_MINUTES = 60
 
-# def rotate_light_eyes():
-#     leds.fade_in()
-#     servo.sweep()
-#     leds.fade_out()
-
-import time # write_lightlevel
-def write_lightlevel(sensor=light_sensor):
-    f = open('log.txt', 'a')
-    timestamp = str(time.time())
-    light_reading = str(sensor.read())
-    f.write(f"{timestamp} {light_reading}\n")
-    f.close()
-    return light_reading
 
 def light_rotate_hoot():
     leds.fade_in()
@@ -51,7 +38,6 @@ def light_rotate_hoot():
     leds.fade_out()
 
 def timed_actions():
-    write_lightlevel()
     if light_sensor.over_minimum():
         light_rotate_hoot()
     else:
@@ -67,5 +53,4 @@ main_timer.init(period=interval,
 
 
 # === Initialization Actions ===
-
 light_rotate_hoot()

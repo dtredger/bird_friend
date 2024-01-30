@@ -4,8 +4,13 @@ class LightSensor:
     """
     Photoresistor that returns lower number in darkness.
     A threshold of ~10,000 seems to be the level of night-time.
-    Wiring requires 3.3v into photoresistor. The other side of photoresistor
-    should split, with one wire to 10k ohm resistor going to ground, and another to an analog pin (for example A0 — number 26 on some boards)
+    The `photodiode_readings.png` shows the readings that come
+    from a sensor left in a room over several days in January
+    (with several windows but no lights on).
+    Wiring requires 3.3v into photoresistor. The other side of
+    photoresistor should split, with one wire to 10k ohm
+    resistor going to ground, and another to an analog pin
+    (for example A0 — number 26 on some boards)
     """
     def __init__(self, sensor_pin):
         self.sensor = ADC(Pin(26))
@@ -37,6 +42,15 @@ class Temperature:
         temperature = 27 - (volt - 0.706)/0.001721
         return round(temperature, 1)
 
+
+# import time # write_lightlevel
+# def write_lightlevel(sensor=light_sensor):
+#     f = open('log.txt', 'a')
+#     timestamp = str(time.time())
+#     light_reading = str(sensor.read())
+#     f.write(f"{timestamp} {light_reading}\n")
+#     f.close()
+#     return light_reading
 
 # === CIRCUITPYTHON ===
 #

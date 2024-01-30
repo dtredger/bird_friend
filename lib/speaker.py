@@ -50,7 +50,7 @@ class Speaker:
         samples = self.make_tone()
         self.audio_out.write(samples)
 
-    def play_wav(self):
+    def play_wav(self, times=1):
         """
         Depending on wav file, seek location and bytearray size may need
         to be modified (200, 30_000 work well with 25kb 1 second wav)
