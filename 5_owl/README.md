@@ -9,6 +9,7 @@ This bird uses a Raspberry Pi clone called [Pico Board RP2040 Dual-Core 264KB AR
 - The neck is a standard 3-wire microservo.
 - The eyes are two LEDs.
 - The light sensor is a photoresistor (temp sensor is built into the board).
+- requires one 10k and one 200 ohm resistor (for photoresistor and LED circuits)
 
 The bird itself is a white styrofoam-filled owl from Dollarama that has been hollowed out, and servo inserted into neck (similar to #4 "ronny"). The only difference is this bird includes a base box, since the speaker is too big to fit inside.
 
