@@ -13,6 +13,10 @@ class Speaker:
     All WAVs must currently have the same sample_rate (11_000).
     `play_wav` buffer and bytearray may also need to be adjusted for different
     files.
+    
+    Anecdotally, 8ohm 0.5w speakers are too quiet to be effective, but 2w
+    speakers seem fine. If necessary, solder 100k resistor between "gain"
+    and gnd on the amplifier to boost level by +15 decibels
     """
     def __init__(self, leftright, bit_clk, data_in, wav_file):
         self.sample_rate = 11_000
@@ -50,7 +54,7 @@ class Speaker:
         samples = self.make_tone()
         self.audio_out.write(samples)
 
-    def play_wav(self, times=1):
+    def play_wav(self):
         """
         Depending on wav file, seek location and bytearray size may need
         to be modified (200, 30_000 work well with 25kb 1 second wav)

@@ -34,6 +34,7 @@ def light_rotate_hoot():
     servo.to_top()
     speaker.play_wav()
     servo.to_bottom()
+    speaker.play_wav()
     servo.to_midpoint()
     leds.fade_out()
 
