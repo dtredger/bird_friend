@@ -1,10 +1,12 @@
 import math
 import struct
+import os
+import random
 from machine import Pin, I2S
 
-class Speaker:
+class Amplifier:
     """
-    Speaker and audio out for bird. Uses I2S audio,
+    Amplifier and audio out for bird. Uses I2S audio,
     which requires 3 pins (in addition to 5v and ground):
     - LRC (Left-Right Clock/Word select)
     - BCLK (Bit Clock/Serial Clock)
@@ -13,15 +15,15 @@ class Speaker:
     All WAVs must currently have the same sample_rate (11_000).
     `play_wav` buffer and bytearray may also need to be adjusted for different
     files.
-    
+
     Anecdotally, 8ohm 0.5w speakers are too quiet to be effective, but 2w
     speakers seem fine. If necessary, solder 100k resistor between "gain"
     and gnd on the amplifier to boost level by +15 decibels
     """
-    def __init__(self, leftright, bit_clk, data_in, wav_file):
+    def __init__(self, leftright, bit_clk, data_in, audio_dir=""):
         self.sample_rate = 11_000
         self.bits = 16
-        self.wav_file = wav_file
+        self.audio_dir = audio_dir
         self.audio_out = I2S(1,
                              sck=Pin(bit_clk),
                              ws=Pin(leftright),
@@ -59,20 +61,23 @@ class Speaker:
         Depending on wav file, seek location and bytearray size may need
         to be modified (200, 30_000 work well with 25kb 1 second wav)
         """
-        wav = open(self.wav_file, "rb")
+        wav = open(self.random_wav(), "rb")
         _ = wav.seek(200)  # advance to first byte of Data section in WAV file
         # allocate sample array
-        wav_samples = bytearray(30_000)
+        # wav_samples = bytearray(30_000)
+        wav_samples = bytearray(60_000)
         # memoryview used to reduce heap allocation
         wav_samples_mv = memoryview(wav_samples)
         num_read = wav.readinto(wav_samples_mv)
         self.audio_out.write(wav_samples_mv[:num_read])
 
-    def select_wav(self):
+    def random_wav(self):
         wavs = []
         for filename in os.listdir(f'/{self.audio_dir}'):
             if filename.lower().endswith('.wav') and not filename.startswith('.'):
-                wavs.append("/WAVs/"+filename)
+                wavs.append(f"/{self.audio_dir}/{filename}")
+        rand = random.randrange(0, len(wavs))
+        return wavs[rand]        
 
     def __del__(self):
         self.audio_out.deinit()

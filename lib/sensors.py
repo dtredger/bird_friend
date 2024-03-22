@@ -27,6 +27,12 @@ class LightSensor:
         reading = self.read()
         return True if reading > self.threshold else False
 
+    def log_reading(self, log_name='sensor_log.txt'):
+        file = open(log_name, 'a')
+        file.write(str(self.read()))
+        file.write('\n')
+        file.close()
+
 
 class Temperature:
     """
