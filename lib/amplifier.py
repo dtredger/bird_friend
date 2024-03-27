@@ -20,9 +20,10 @@ class Amplifier:
     speakers seem fine. If necessary, solder 100k resistor between "gain"
     and gnd on the amplifier to boost level by +15 decibels
     """
-    def __init__(self, leftright, bit_clk, data_in, audio_dir=""):
+    def __init__(self, leftright, bit_clk, data_in, audio_dir="", volume_change=False):
         self.sample_rate = 11_000
         self.bits = 16
+        self.volume_change = volume_change
         self.audio_dir = audio_dir
         self.audio_out = I2S(1,
                              sck=Pin(bit_clk),
@@ -56,19 +57,25 @@ class Amplifier:
         samples = self.make_tone()
         self.audio_out.write(samples)
 
+
     def play_wav(self):
         """
         Depending on wav file, seek location and bytearray size may need
         to be modified (200, 30_000 work well with 25kb 1 second wav)
+
+        I2S.shift changes the given array to raise/lower volume. However,
+        this appears to create a new bytearray (so requires memory)
         """
         wav = open(self.random_wav(), "rb")
         _ = wav.seek(200)  # advance to first byte of Data section in WAV file
         # allocate sample array
-        # wav_samples = bytearray(30_000)
-        wav_samples = bytearray(60_000)
+        wav_samples = bytearray(15_000)
+
         # memoryview used to reduce heap allocation
         wav_samples_mv = memoryview(wav_samples)
         num_read = wav.readinto(wav_samples_mv)
+        if self.volume_change:
+            I2S.shift(buf=wav_samples_mv[:num_read], bits=self.bits, shift=self.volume_change)
         self.audio_out.write(wav_samples_mv[:num_read])
 
     def random_wav(self):
@@ -77,7 +84,7 @@ class Amplifier:
             if filename.lower().endswith('.wav') and not filename.startswith('.'):
                 wavs.append(f"/{self.audio_dir}/{filename}")
         rand = random.randrange(0, len(wavs))
-        return wavs[rand]        
+        return wavs[rand]
 
     def __del__(self):
         self.audio_out.deinit()
