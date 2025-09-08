@@ -1,0 +1,68 @@
+{
+  "_comment": "Configuration file for Prop-Maker Feather Crow Bird",
+  "_description": "Modify these settings to customize your bird's behavior. Save and reset board for changes to take effect.",
+  
+  "debug": true,
+  "interval_minutes": 60,
+  
+  "pins": {
+    "led": "A0",
+    "light_sensor": "A1",
+    "_note": "Servo and audio use built-in hardware - no pin config needed"
+  },
+  
+  "audio": {
+    "directory": "audio",
+    "sample_rate": 11000,
+    "volume": 1.0,
+    "_volume_range": "0.0 to 1.0"
+  },
+  
+  "sensors": {
+    "light_threshold": 25000,
+    "_threshold_note": "0-65535, higher = need more light to activate"
+  },
+  
+  "leds": {
+    "max_brightness": 0.8,
+    "fade_duration": 1.0,
+    "flash_duration": 0.3,
+    "_brightness_range": "0.0 to 1.0"
+  },
+  
+  "servo": {
+    "speed": 0.02,
+    "pause": 0.5,
+    "_speed_note": "Delay between steps in seconds - lower = faster"
+  },
+  
+  "behavior": {
+    "night_flash_count": 2,
+    "action_flash_count": 3
+  },
+  
+  "_presets": {
+    "_description": "Copy these values to main config for different behaviors",
+    
+    "quiet_mode": {
+      "leds": { "max_brightness": 0.3 },
+      "audio": { "volume": 0.4 },
+      "interval_minutes": 120,
+      "behavior": { "night_flash_count": 1 }
+    },
+    
+    "active_mode": {
+      "leds": { "max_brightness": 1.0 },
+      "audio": { "volume": 0.9 },
+      "interval_minutes": 15,
+      "behavior": { "night_flash_count": 3 }
+    },
+    
+    "testing_mode": {
+      "debug": true,
+      "interval_minutes": 1,
+      "leds": { "max_brightness": 0.5 },
+      "audio": { "volume": 0.5 }
+    }
+  }
+}

@@ -48,36 +48,3 @@ class Servo:
         self.to_top()
         self.to_bottom()
         self.to_midpoint()
-
-
-# === CIRCUITPYTHON ===
-#
-# SERVO_PIN = ''  1) Neck servo (common to all)
-#
-#     from time import sleep
-#     import pwmio
-#     from adafruit_motor import servo
-#
-#     def rotate_servo_to(pin, end_pos, sleep_interval=0.01):
-#         servo_pmw = pwmio.PWMOut(pin, duty_cycle=2 ** 15, frequency=50)
-#         servo_obj = servo.Servo(servo_pmw)
-#         current_angle = int(servo_obj.angle) if servo_obj.angle < 181 else 90
-#         step = 1 if (current_angle < end_pos) else -1
-#         for position in range(current_angle, end_pos, step):
-#             servo_obj.angle = position
-#             sleep(sleep_interval)
-#         servo_pmw.deinit()
-#
-#     def servo_left_right_center(pin=SERVO_PIN, rotation_pause=1.3):
-#         """
-#         On Restart, the pin's current location will always return 0
-#         even though the actual position will be wherever it was when
-#         powered off. This causes unexpected rotation if you specify a
-#         starting point
-#         """
-#         # rotate one way, back past mid, then end in mid
-#         rotate_servo_to(pin, 180)
-#         sleep(rotation_pause)
-#         rotate_servo_to(pin, 0)
-#         sleep(rotation_pause)
-#         rotate_servo_to(pin, 90)
