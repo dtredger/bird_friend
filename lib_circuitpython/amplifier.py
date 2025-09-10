@@ -38,7 +38,7 @@ class Amplifier:
             channel_count=1,
             bits_per_sample=self.bits, 
             samples_signed=True,
-            buffer_size=32768
+            buffer_size=4096
         )
         
         # Start audio output
