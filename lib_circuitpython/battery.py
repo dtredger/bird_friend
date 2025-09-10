@@ -122,7 +122,7 @@ class Battery:
         status = self.get_status()
         try:
             with open(log_name, 'a') as file:
-                timestamp = time.monotonic()
+                timestamp = int(time.monotonic())
                 log_line = f"{timestamp},{status['voltage']},{status['percentage']},{status['level']}\n"
                 file.write(log_line)
         except Exception as e:

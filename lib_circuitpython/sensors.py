@@ -142,7 +142,7 @@ class LightSensor:
         try:
             with open(log_name, 'a') as file:
                 reading = self.read()
-                timestamp = time.monotonic()
+                timestamp = int(time.monotonic())
                 file.write(f"{timestamp},{reading}\n")
         except Exception as e:
             print(f"Error logging sensor reading: {e}")

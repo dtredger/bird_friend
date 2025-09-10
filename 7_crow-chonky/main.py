@@ -227,7 +227,7 @@ class CrowBird:
     
     def run_debug_loop(self, interval_divider=6):
         """Run debug loop that focuses on logging sensor data"""
-        print(f"🔍 Starting DEBUG mode - logging sensors every {INTERVAL_MINUTES} minutes")
+        print(f"🔍 Starting DEBUG mode - logging sensors every {INTERVAL_MINUTES/interval_divider} minutes")
         print("This mode logs sensor data without performing bird actions")
         
         # Initial sensor logging
@@ -238,7 +238,7 @@ class CrowBird:
             try:
                 # Sleep for the specified interval (divided by interval_divider to run more frequently than main loop)
                 sleep_seconds = INTERVAL_MINUTES * ( 60 / interval_divider)
-                print(f"💤 Debug sleep for {INTERVAL_MINUTES} minutes...")
+                print(f"💤 Debug sleep for {INTERVAL_MINUTES/interval_divider} minutes...")
                 time.sleep(sleep_seconds)
                 
                 # Log sensor data
