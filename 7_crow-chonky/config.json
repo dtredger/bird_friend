@@ -8,19 +8,20 @@
   "pins": {
     "led": "A0",
     "light_sensor": "A1",
+    "battery": "A2"
     "_note": "Servo and audio use built-in hardware - no pin config needed"
   },
   
   "audio": {
     "directory": "audio",
     "sample_rate": 11000,
-    "volume": 1.0,
+    "volume": 0.5,
     "_volume_range": "0.0 to 1.0"
   },
   
   "sensors": {
-    "light_threshold": 25000,
-    "_threshold_note": "0-65535, higher = need more light to activate"
+    "light_threshold": 1000,
+    "_threshold_note": "0-65535, higher = need more light to activate. with 2000ohms resistance, very dark gives ~300, light around 6000"
   },
   
   "leds": {

@@ -10,7 +10,11 @@ class LightSensor:
     With 10kΩ resistor: Higher values = more light
     With 100kΩ resistor: 0 = darkness, 500-1800 = light
     
-    Wiring: 3.3V → Photoresistor → Sensor Pin → Resistor (1k-100k) → GND
+    3.3V ── Photoresistor ── [Junction] ── A1 (analog pin)
+                                │
+                            10kΩ resistor
+                                │
+                               GND
     
     The class automatically averages multiple readings to reduce noise
     and caches recent values to prevent reading ADC too frequently.

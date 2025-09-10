@@ -4,54 +4,39 @@ import digitalio
 
 class Battery:
     """
-    Battery management for CircuitPython devices with LiPo support.
+    Battery monitoring for Adafruit RP2040 Prop-Maker Feather.
     
-    Many CircuitPython boards (like Feather series) provide:
-    - Automatic charging when external power is connected
-    - Automatic switching to battery when external power is removed
-    - Battery voltage monitoring via ADC
-    - Optional charging status detection
+    This board does NOT have built-in battery monitoring like other Feathers.
+    You must add your own voltage divider circuit:
     
-    Typical LiPo voltage ranges:
-    - 4.2V: Fully charged
-    - 3.7V: Nominal voltage  
-    - 3.4V: Low battery warning
-    - 3.0V: Critical/cutoff voltage
+    Wiring:
+    BAT pin → 100kΩ → [A3] → 100kΩ → GND
     
-    For Feather boards:
-    - Use board.VOLTAGE_MONITOR or board.A6 for battery voltage
-    - Some boards have board.CHARGING pin for charge status
+    The voltage divider makes the battery voltage safe to read (divides by 2).
     """
     
-    def __init__(self, battery_pin, charging_pin=None, voltage_divider_ratio=2.0):
+    def __init__(self, battery_pin, charging_pin=None):
         """
-        Initialize battery monitoring.
+        Initialize battery monitoring for Prop-Maker Feather.
         
         Args:
-            battery_pin: Analog pin connected to battery voltage divider
-            charging_pin: Optional digital pin for charging status  
-            voltage_divider_ratio: Voltage divider ratio (default 2.0 for most Feathers)
+            battery_pin: Analog pin connected to voltage divider (A0-A3)
+            charging_pin: Not available on Prop-Maker Feather (set to None)
         """
         self.battery_adc = analogio.AnalogIn(battery_pin)
-        
-        if charging_pin is not None:
-            self.charging_pin = digitalio.DigitalInOut(charging_pin)
-            self.charging_pin.direction = digitalio.Direction.INPUT
-            self.charging_pin.pull = digitalio.Pull.UP
-        else:
-            self.charging_pin = None
+        self.charging_pin = None  # Not available on this board
         
         # Voltage thresholds for LiPo battery
-        self.voltage_full = 4.1      # Consider full above this
-        self.voltage_nominal = 3.7   # Nominal voltage
-        self.voltage_low = 3.4       # Low battery warning
-        self.voltage_critical = 3.0  # Critical - should shutdown soon
+        self.voltage_full = 4.1      
+        self.voltage_nominal = 3.7   
+        self.voltage_low = 3.4       
+        self.voltage_critical = 3.0  
         
-        # ADC reference voltage (usually 3.3V for CircuitPython)
+        # ADC reference voltage
         self.ref_voltage = 3.3
         
-        # Voltage divider ratio
-        self.voltage_divider_ratio = voltage_divider_ratio
+        # Voltage divider ratio (2 x 100kΩ resistors = 2:1 divider)
+        self.voltage_divider_ratio = 2.0
 
     def read_raw(self):
         """Read raw ADC value (0-65535)"""
@@ -59,15 +44,15 @@ class Battery:
 
     def read_voltage(self):
         """
-        Read battery voltage.
+        Read battery voltage accounting for voltage divider.
         
         Returns:
             float: Battery voltage in volts
         """
         raw_reading = self.read_raw()
-        # Convert ADC reading to voltage
+        # Convert ADC reading to voltage at the pin
         adc_voltage = (raw_reading / 65535) * self.ref_voltage
-        # Account for voltage divider
+        # Account for voltage divider (multiply by 2)
         battery_voltage = adc_voltage * self.voltage_divider_ratio
         return round(battery_voltage, 2)
 
@@ -80,7 +65,6 @@ class Battery:
         """
         voltage = self.read_voltage()
         
-        # Simple linear mapping from voltage to percentage
         if voltage >= self.voltage_full:
             return 100
         elif voltage <= self.voltage_critical:
@@ -94,27 +78,18 @@ class Battery:
 
     def is_charging(self):
         """
-        Check if battery is currently charging.
+        Check if battery is charging.
         
         Returns:
-            bool: True if charging, False if not charging, None if status unknown
+            None: Charging status not available on Prop-Maker Feather
         """
-        if self.charging_pin is None:
-            return None
-        
-        # CHARGING pin is typically active low (pulled low when charging)
-        return not self.charging_pin.value
+        # Charging status is not available on this board
+        return None
 
     def get_status(self):
-        """
-        Get comprehensive battery status.
-        
-        Returns:
-            dict: Battery status information
-        """
+        """Get comprehensive battery status"""
         voltage = self.read_voltage()
         percentage = self.get_percentage()
-        charging = self.is_charging()
         
         # Determine status level
         if voltage >= self.voltage_full:
@@ -130,7 +105,7 @@ class Battery:
             "voltage": voltage,
             "percentage": percentage,
             "level": level,
-            "charging": charging,
+            "charging": None,  # Not available on this board
             "raw_adc": self.read_raw()
         }
 
@@ -143,137 +118,47 @@ class Battery:
         return self.read_voltage() < self.voltage_critical
 
     def log_status(self, log_name='battery_log.txt'):
-        """
-        Log current battery status to file.
-        
-        Args:
-            log_name (str): Log file name
-        """
+        """Log current battery status to file"""
         status = self.get_status()
         try:
             with open(log_name, 'a') as file:
                 timestamp = time.monotonic()
-                log_line = f"{timestamp},{status['voltage']},{status['percentage']},{status['level']},{status['charging']}\n"
+                log_line = f"{timestamp},{status['voltage']},{status['percentage']},{status['level']}\n"
                 file.write(log_line)
         except Exception as e:
             print(f"Error logging battery status: {e}")
 
-    def wait_for_charge_level(self, target_percentage, check_interval=30):
-        """
-        Wait until battery reaches target charge level.
-        
-        Args:
-            target_percentage (int): Target percentage to wait for
-            check_interval (int): Seconds between checks
-        """
-        print(f"Waiting for battery to reach {target_percentage}%...")
-        
-        while True:
-            current_percentage = self.get_percentage()
-            charging = self.is_charging()
-            
-            print(f"Battery: {current_percentage}% (Charging: {charging})")
-            
-            if current_percentage >= target_percentage:
-                print(f"Target {target_percentage}% reached!")
-                break
-                
-            if not charging and current_percentage < target_percentage:
-                print("Warning: Not charging and below target level")
-                
-            time.sleep(check_interval)
-
-    def monitor_battery(self, callback=None, check_interval=60):
-        """
-        Continuously monitor battery and call callback on status changes.
-        
-        Args:
-            callback: Function to call with status dict
-            check_interval (int): Seconds between checks
-        """
-        last_level = None
-        
-        while True:
-            status = self.get_status()
-            current_level = status['level']
-            
-            # Call callback if provided
-            if callback:
-                callback(status)
-            
-            # Print status changes
-            if current_level != last_level:
-                print(f"Battery status changed: {current_level} ({status['percentage']}%)")
-                last_level = current_level
-            
-            time.sleep(check_interval)
-
     def deinit(self):
-        """Clean up battery monitoring resources"""
+        """Clean up resources"""
         self.battery_adc.deinit()
-        if self.charging_pin:
-            self.charging_pin.deinit()
 
-
-# Example usage functions
-def battery_callback(status):
-    """Example callback function for battery monitoring"""
-    if status['level'] == 'critical':
-        print("⚠️  CRITICAL BATTERY - Consider shutting down!")
-    elif status['level'] == 'low':
-        print("🔋 Low battery warning")
-    elif status['charging'] and status['percentage'] == 100:
-        print("🔋 Battery fully charged")
-
-
-# Helper functions for common CircuitPython boards
-def create_feather_battery(charging_pin=None):
-    """
-    Create Battery instance for Adafruit Feather boards.
-    Most Feathers use A6/VOLTAGE_MONITOR for battery monitoring.
-    """
-    import board
-    
-    # Try to use VOLTAGE_MONITOR if available, otherwise A6
-    try:
-        battery_pin = board.VOLTAGE_MONITOR
-    except AttributeError:
-        try:
-            battery_pin = board.A6
-        except AttributeError:
-            raise ValueError("This board doesn't appear to have battery monitoring")
-    
-    return Battery(battery_pin, charging_pin)
-
-def get_voltage_simple(pin):
-    """Simple function to get voltage from a pin"""
-    adc = analogio.AnalogIn(pin)
-    voltage = (adc.value / 65535) * 3.3 * 2  # Assuming 2:1 voltage divider
-    adc.deinit()
-    return voltage
 
 def test_battery():
-    """Test battery functionality with automatic board detection"""
+    """Test battery monitoring"""
+    import board
+    
+    print("=== Prop-Maker Feather Battery Test ===")
+    print("Note: Requires voltage divider circuit on A3")
+    
     try:
-        battery = create_feather_battery()
-        print("=== Feather Battery Test ===")
-    except ValueError:
-        print("=== Generic Battery Test ===")
-        import board
-        # Use A0 as fallback for generic boards
-        battery = Battery(board.A0)
-    
-    status = battery.get_status()
-    print(f"Voltage: {status['voltage']}V")
-    print(f"Percentage: {status['percentage']}%")
-    print(f"Level: {status['level']}")
-    print(f"Charging: {status['charging']}")
-    print(f"Raw ADC: {status['raw_adc']}")
-    
-    # Log status
-    battery.log_status()
-    
-    return battery
+        battery = Battery(board.A3)
+        status = battery.get_status()
+        
+        print(f"Raw ADC: {status['raw_adc']}")
+        print(f"Voltage: {status['voltage']}V") 
+        print(f"Percentage: {status['percentage']}%")
+        print(f"Level: {status['level']}")
+        print(f"Charging: {status['charging']} (not available on this board)")
+        
+        # Log status
+        battery.log_status()
+        
+        return battery
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        print("Make sure you have the voltage divider circuit connected!")
+        return None
 
 
 if __name__ == "__main__":

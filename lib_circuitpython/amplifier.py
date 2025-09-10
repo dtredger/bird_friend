@@ -23,7 +23,7 @@ class Amplifier:
     - board.I2S_WORD_SELECT for leftright
     - board.I2S_DATA for data_in
     """
-    def __init__(self, leftright, bit_clk, data_in, audio_dir="", sample_rate=22050, bits=16):
+    def __init__(self, leftright, bit_clk, data_in, audio_dir="", sample_rate=11000, bits=16):
         self.sample_rate = sample_rate
         self.bits = bits
         self.audio_dir = audio_dir
@@ -45,18 +45,20 @@ class Amplifier:
         self.audio.play(self.mixer)
 
     def make_tone(self, frequency=440, duration=1.0, volume=0.5):
-        """Generate a sine wave tone"""
-        length = int(self.sample_rate * duration)
+        """Generate a sine wave tone with lower sample rate to save memory"""
+        # Use lower sample rate for tones to reduce memory usage
+        tone_sample_rate = 8000  # Reduced from 22050 to save memory
+        length = int(tone_sample_rate * duration)
         sine_wave = array.array("h", [0] * length)
         
         volume_factor = int(volume * (2 ** 15 - 1))
         
         for i in range(length):
             sine_wave[i] = int(
-                math.sin(2 * math.pi * frequency * i / self.sample_rate) * volume_factor
+                math.sin(2 * math.pi * frequency * i / tone_sample_rate) * volume_factor
             )
         
-        return audiocore.RawSample(sine_wave, sample_rate=self.sample_rate)
+        return audiocore.RawSample(sine_wave, sample_rate=tone_sample_rate)
 
     def play_tone(self, frequency=440, duration=1.0, volume=0.5):
         """Play a tone of specified frequency and duration"""

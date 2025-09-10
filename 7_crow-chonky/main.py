@@ -10,12 +10,13 @@ Hardware Setup:
 - Speaker: Connect 4-8Ω speaker to built-in amplifier terminals (+ and -)  
 - LEDs: Connect to pin A0 through 200Ω resistor to GND
 - Light sensor: Connect photoresistor between 3.3V and A1, with 10kΩ pulldown to GND
+- Battery monitoring: Connect voltage divider (BAT → 100kΩ → A3 → 100kΩ → GND)
 
 The bird will:
 - Check light level every INTERVAL_MINUTES 
 - If bright enough: light eyes, move servo, play sounds
 - If too dark: just flash eyes briefly
-- Log sensor data if DEBUG is enabled
+- Log sensor data and battery status if DEBUG is enabled
 """
 
 import board
@@ -28,6 +29,14 @@ from servos import Servo
 from leds import Leds
 from sensors import LightSensor
 from amplifier import Amplifier
+
+# Import our battery monitoring library
+try:
+    from battery import Battery
+    BATTERY_AVAILABLE = True
+except ImportError:
+    print("⚠️ battery.py not found - battery monitoring disabled")
+    BATTERY_AVAILABLE = False
 
 # === CONFIGURATION ===
 def load_config():
@@ -45,14 +54,15 @@ def load_config():
             "interval_minutes": 60,
             "pins": {
                 "led": "A0",
-                "light_sensor": "A1"
+                "light_sensor": "A1",
+                "battery": "A3"
             },
             "audio": {
                 "directory": "audio",
                 "volume": 1.0
             },
             "sensors": {
-                "light_threshold": 30000
+                "light_threshold": 25000
             }
         }
 
@@ -94,6 +104,15 @@ class CrowBird:
         self.light_sensor.threshold = config["sensors"]["light_threshold"]
         print("✅ Light sensor ready")
         
+        # Battery monitoring setup using our Battery library
+        if BATTERY_AVAILABLE:
+            battery_pin = getattr(board, config["pins"]["battery"])
+            self.battery = Battery(battery_pin)
+            print("✅ Battery monitoring ready")
+        else:
+            self.battery = None
+            print("⚠️ Battery monitoring disabled")
+        
         # Servo setup using our Servo library with built-in header
         self.servo = Servo(board.EXTERNAL_SERVO)
         print("✅ Servo ready")
@@ -113,6 +132,12 @@ class CrowBird:
     def light_rotate_hoot(self):
         """Main bird action sequence - light eyes, rotate head, make sounds"""
         print("🐦 Performing bird action sequence...")
+        
+        # Check battery level before intensive actions
+        if self.battery and self.battery.is_critical_battery():
+            print("⚠️ Critical battery - skipping action to preserve power")
+            self.leds.flash_eyes(times=5)  # Warning flash
+            return
         
         # Light up eyes using our Leds library
         self.leds.fade_in()
@@ -143,6 +168,20 @@ class CrowBird:
         # Log sensor data if debugging
         if DEBUG:
             self.light_sensor.log_reading()
+            if self.battery:
+                self.battery.log_status()
+        
+        # Check battery status using our Battery library
+        if self.battery:
+            battery_status = self.battery.get_status()
+            print(f"🔋 Battery: {battery_status['voltage']}V ({battery_status['percentage']}%)")
+            
+            if self.battery.is_low_battery():
+                print("🔋 Low battery warning")
+            if self.battery.is_critical_battery():
+                print("⚠️ CRITICAL BATTERY!")
+        else:
+            print("🔋 Battery monitoring not available")
             
         # Check light level using our LightSensor library
         light_reading = self.light_sensor.read()
@@ -163,6 +202,17 @@ class CrowBird:
     def test_all_components(self):
         """Test all components individually"""
         print("\n=== Component Test Mode ===")
+        
+        # Test battery monitoring using our PropMakerBattery library
+        if self.battery:
+            print("Testing battery monitoring...")
+            status = self.battery.get_status()
+            print(f"Battery: {status['voltage']}V ({status['percentage']}%)")
+            print(f"Battery level: {status['level']}")
+            self.battery.log_status()
+        else:
+            print("Battery monitoring not available")
+        time.sleep(1)
         
         # Test LEDs
         print("Testing LEDs...")
@@ -227,6 +277,8 @@ class CrowBird:
                 self.light_sensor.deinit()
             if hasattr(self, 'amplifier'):
                 self.amplifier.deinit()
+            if hasattr(self, 'battery') and self.battery:
+                self.battery.deinit()
             self.external_power.value = False
         except Exception as e:
             print(f"Cleanup error: {e}")
@@ -235,7 +287,7 @@ class CrowBird:
 def main():
     """Main entry point"""
     print("🐦 Crow Bird starting on Prop-Maker Feather! 🐦")
-    print("Using CircuitPython bird libraries")
+    print("Using CircuitPython bird libraries with battery monitoring")
     
     try:
         # Create and initialize bird
