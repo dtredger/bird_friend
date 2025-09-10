@@ -165,12 +165,6 @@ class CrowBird:
         print(f"\n=== Timed Action Check ===")
         print(f"Time: {time.localtime()}")
         
-        # Log sensor data if debugging
-        if DEBUG:
-            self.light_sensor.log_reading()
-            if self.battery:
-                self.battery.log_status()
-        
         # Check battery status using our Battery library
         if self.battery:
             battery_status = self.battery.get_status()
@@ -198,6 +192,99 @@ class CrowBird:
             self.leds.flash_eyes()
             
         print("=== Check Complete ===\n")
+    
+    def log_sensor_data(self):
+        """Log sensor data for debugging purposes"""
+        print(f"\n=== Sensor Data Logging ===")
+        print(f"Time: {time.localtime()}")
+        
+        # Log light sensor data
+        try:
+            light_reading = self.light_sensor.read()
+            light_sufficient = self.light_sensor.over_minimum()
+            print(f"💡 Light: {light_reading} (sufficient: {light_sufficient})")
+            self.light_sensor.log_reading()
+        except Exception as e:
+            print(f"❌ Light sensor error: {e}")
+        
+        # Log battery data
+        if self.battery:
+            try:
+                battery_status = self.battery.get_status()
+                print(f"🔋 Battery: {battery_status['voltage']}V ({battery_status['percentage']}%) - {battery_status['level']}")
+                self.battery.log_status()
+                
+                if self.battery.is_low_battery():
+                    print("⚠️ Low battery warning")
+                if self.battery.is_critical_battery():
+                    print("🚨 CRITICAL BATTERY!")
+            except Exception as e:
+                print(f"❌ Battery sensor error: {e}")
+        else:
+            print("🔋 Battery monitoring not available")
+        
+        print("=== Logging Complete ===\n")
+    
+    def run_debug_loop(self, interval_divider=6):
+        """Run debug loop that focuses on logging sensor data"""
+        print(f"🔍 Starting DEBUG mode - logging sensors every {INTERVAL_MINUTES} minutes")
+        print("This mode logs sensor data without performing bird actions")
+        
+        # Initial sensor logging
+        self.log_sensor_data()
+        
+        # Debug loop
+        while True:
+            try:
+                # Sleep for the specified interval (divided by interval_divider to run more frequently than main loop)
+                sleep_seconds = INTERVAL_MINUTES * ( 60 / interval_divider)
+                print(f"💤 Debug sleep for {INTERVAL_MINUTES} minutes...")
+                time.sleep(sleep_seconds)
+                
+                # Log sensor data
+                self.log_sensor_data()
+                
+            except KeyboardInterrupt:
+                print("\n🛑 Debug mode interrupted")
+                break
+            except Exception as e:
+                print(f"❌ Error in debug loop: {e}")
+                # Flash eyes to indicate error
+                try:
+                    self.leds.flash_eyes(times=3)
+                except:
+                    pass
+                time.sleep(5)  # Wait before retrying
+    
+    def run_main_loop(self):
+        """Run the main program loop"""
+        print(f"🐦 Starting main loop - checking every {INTERVAL_MINUTES} minutes")
+        
+        # Initial action on startup
+        self.timed_actions()
+        
+        # Main loop
+        while True:
+            try:
+                # Sleep for the specified interval
+                sleep_seconds = INTERVAL_MINUTES * 60
+                print(f"💤 Sleeping for {INTERVAL_MINUTES} minutes...")
+                time.sleep(sleep_seconds)
+                
+                # Perform timed actions
+                self.timed_actions()
+                
+            except KeyboardInterrupt:
+                print("\n🛑 Shutting down...")
+                break
+            except Exception as e:
+                print(f"❌ Error in main loop: {e}")
+                # Flash eyes to indicate error
+                try:
+                    self.leds.flash_eyes(times=5)
+                except:
+                    pass
+                time.sleep(5)  # Wait before retrying
     
     def test_all_components(self):
         """Test all components individually"""
@@ -238,33 +325,6 @@ class CrowBird:
         
         print("All component tests complete!")
     
-    def run_main_loop(self):
-        """Run the main program loop"""
-        print(f"Starting main loop - checking every {INTERVAL_MINUTES} minutes")
-        
-        # Initial action on startup
-        self.timed_actions()
-        
-        # Main loop
-        while True:
-            try:
-                # Sleep for the specified interval
-                sleep_seconds = INTERVAL_MINUTES * 60
-                print(f"Sleeping for {INTERVAL_MINUTES} minutes...")
-                time.sleep(sleep_seconds)
-                
-                # Perform timed actions
-                self.timed_actions()
-                
-            except KeyboardInterrupt:
-                print("\nShutting down...")
-                break
-            except Exception as e:
-                print(f"Error in main loop: {e}")
-                # Flash eyes to indicate error
-                self.leds.flash_eyes(times=5)
-                time.sleep(5)  # Wait before retrying
-    
     def cleanup(self):
         """Clean up resources using library deinit methods"""
         print("Cleaning up...")
@@ -293,20 +353,24 @@ def main():
         # Create and initialize bird
         crow = CrowBird()
         
-        # Choose mode - uncomment one of these:
-        
-        # 1. Test mode - test all components once then stop
+        # Choose mode based on DEBUG setting
         if DEBUG:
+            print("🔍 DEBUG mode enabled - will log sensors instead of performing actions")
+            print("Set 'debug': false in config.json for normal operation")
+            
+            # Test all components first in debug mode
             crow.test_all_components()
-        
-        # 2. Normal mode - run continuous timed loop  
-        crow.run_main_loop()
-        
-        # 3. Single action test
-        # crow.light_rotate_hoot()
+            
+            # Run debug loop
+            crow.run_debug_loop()
+        else:
+            print("🐦 Normal mode - performing timed bird actions")
+            
+            # Run normal main loop
+            crow.run_main_loop()
         
     except Exception as e:
-        print(f"Fatal error: {e}")
+        print(f"💥 Fatal error: {e}")
         # Try to flash LEDs to indicate error
         try:
             from leds import Leds
@@ -319,7 +383,7 @@ def main():
         # Clean up
         if 'crow' in locals():
             crow.cleanup()
-        print("Crow bird shut down complete.")
+        print("🐦 Crow bird shut down complete.")
 
 
 if __name__ == "__main__":
