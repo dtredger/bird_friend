@@ -69,7 +69,7 @@ class Amplifier:
         while self.mixer.voice[0].playing:
             time.sleep(0.1)
 
-    def play_wav(self, filename=None, volume=1.0):
+    def play_wav(self, filename=None, volume=None):
         """
         Play a WAV file. If no filename specified, play a random WAV from audio_dir.
         """
@@ -83,8 +83,9 @@ class Amplifier:
             with open(filename, "rb") as wav_file:
                 wave = audiocore.WaveFile(wav_file)
                 
-                # Set volume
-                self.mixer.voice[0].level = volume
+                # Set volume if given
+                if not volume is None:
+                    self.mixer.voice[0].level = volume
                 
                 # Play the file
                 self.mixer.voice[0].play(wave)

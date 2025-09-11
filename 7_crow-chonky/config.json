@@ -2,20 +2,24 @@
   "_comment": "Configuration file for Prop-Maker Feather Crow Bird",
   "_description": "Modify these settings to customize your bird's behavior. Save and reset board for changes to take effect.",
   
-  "debug": true,
+  "debug": false,
   "interval_minutes": 60,
+
+  "battery": {
+    "enabled": false
+  },
   
   "pins": {
     "led": "A0",
     "light_sensor": "A1",
-    "battery": "A2"
+    "battery": "A2",
     "_note": "Servo and audio use built-in hardware - no pin config needed"
   },
   
   "audio": {
     "directory": "audio",
     "sample_rate": 11000,
-    "volume": 0.5,
+    "volume": 0.6,
     "_volume_range": "0.0 to 1.0"
   },
   
