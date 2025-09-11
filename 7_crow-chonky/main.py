@@ -164,40 +164,7 @@ def load_config():
     except (OSError, ValueError) as e:
         print(f"⚠️ config.json not found or invalid: {e}")
         print("Using default settings")
-        return {
-            "mode": "default",
-            "debug": True,
-            "interval_minutes": 60,
-            "pins": {
-                "led": "A0",
-                "light_sensor": "A1",
-                "battery": "A2"
-            },
-            "audio": {
-                "directory": "audio",
-                "sample_rate": 11000,
-                "volume": 0.5
-            },
-            "sensors": {
-                "light_threshold": 1000
-            },
-            "leds": {
-                "max_brightness": 0.8,
-                "fade_duration": 1.0,
-                "flash_duration": 0.3
-            },
-            "servo": {
-                "speed": 0.02,
-                "pause": 0.5
-            },
-            "battery": {
-                "enabled": False
-            },
-            "behavior": {
-                "night_flash_count": 2,
-                "action_flash_count": 3
-            }
-        }
+        return None
 
 
 def import_mode(mode_name):

@@ -2,12 +2,8 @@
 Battery Monitor Mode - Ultra Low Power Monitoring
 ================================================
 
-This mode demonstrates ultra-low power operation using deep sleep.
-It wakes up periodically to check and log battery status, then
+This mode wakes up periodically to check and log battery status, then
 goes back to deep sleep without performing any intensive actions.
-
-Perfect for long-term battery monitoring or when you want to
-minimize power consumption while still tracking system health.
 
 Actions:
 - Check battery status
@@ -17,7 +13,6 @@ Actions:
 """
 
 import time
-# Import the default mode to access core functionality if needed
 import modes.default as default_mode
 
 
