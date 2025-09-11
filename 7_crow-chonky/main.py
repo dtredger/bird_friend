@@ -6,7 +6,7 @@ This is the main entry point that initializes the bird hardware and
 dispatches to the appropriate mode based on configuration.
 
 Available modes:
-- normal: Standard timed operation (default)
+- default: Standard timed operation (contains core light_rotate_hoot function)
 - debug: Component testing and diagnostics
 - demo: Continuous demonstration mode
 - calibration: Sensor calibration assistant
@@ -35,6 +35,8 @@ from sensors import LightSensor
 from amplifier import Amplifier
 from battery import Battery
 
+# Always import default mode for core functionality
+import modes.default as default_mode
 
 
 class CrowBird:
@@ -99,37 +101,6 @@ class CrowBird:
         
         print("All components initialized!")
     
-    def light_rotate_hoot(self):
-        """Main bird action sequence - light eyes, rotate head, make sounds"""
-        print("🐦 Performing bird action sequence...")
-        
-        # Check battery level before intensive actions
-        if self.battery and self.battery.is_critical_battery():
-            print("⚠️ Critical battery - skipping action to preserve power")
-            self.leds.flash_eyes(times=5)
-            return
-        
-        # Light up eyes
-        self.leds.fade_in()
-        
-        # Move to top and play sound
-        self.servo.to_top()
-        self.amplifier.play_wav()
-        
-        time.sleep(0.5)
-        
-        # Move to bottom and play sound
-        self.servo.to_bottom() 
-        self.amplifier.play_wav()
-        
-        time.sleep(0.5)
-        
-        # Return to center and fade out eyes
-        self.servo.to_midpoint()
-        self.leds.fade_out()
-        
-        print("Action sequence complete!")
-    
     def check_conditions(self):
         """Check light and battery conditions, return if action should proceed"""
         # Check battery status
@@ -150,20 +121,35 @@ class CrowBird:
         return light_sufficient, "light_sufficient" if light_sufficient else "too_dark"
     
     def cleanup(self):
-        """Clean up resources"""
+        """Clean up resources - especially important before deep sleep"""
         print("Cleaning up...")
         try:
+            # Turn off LEDs
             if hasattr(self, 'leds'):
+                self.leds.turn_off()
                 self.leds.deinit()
+            
+            # Stop servo and deinit
             if hasattr(self, 'servo'):
                 self.servo.deinit()
+            
+            # Deinit sensors
             if hasattr(self, 'light_sensor'):
                 self.light_sensor.deinit()
+                
+            # Stop audio and deinit
             if hasattr(self, 'amplifier'):
+                self.amplifier.stop()
                 self.amplifier.deinit()
+                
+            # Battery doesn't need deinit in our implementation
             if hasattr(self, 'battery') and self.battery:
-                pass  # Battery doesn't need deinit in our implementation
+                pass
+                
+            # Turn off external power last
             self.external_power.value = False
+            print("✅ Cleanup complete")
+            
         except Exception as e:
             print(f"Cleanup error: {e}")
 
@@ -179,7 +165,7 @@ def load_config():
         print(f"⚠️ config.json not found or invalid: {e}")
         print("Using default settings")
         return {
-            "mode": "normal",
+            "mode": "default",
             "debug": True,
             "interval_minutes": 60,
             "pins": {
@@ -204,6 +190,9 @@ def load_config():
                 "speed": 0.02,
                 "pause": 0.5
             },
+            "battery": {
+                "enabled": False
+            },
             "behavior": {
                 "night_flash_count": 2,
                 "action_flash_count": 3
@@ -219,7 +208,7 @@ def import_mode(mode_name):
         return module
     except ImportError as e:
         print(f"❌ Could not import mode '{mode_name}': {e}")
-        print("Available modes: normal, debug, demo, calibration, setup, maintenance, single")
+        print("Available modes: default, debug, demo, calibration, setup, maintenance, single")
         return None
 
 
@@ -230,18 +219,23 @@ def main():
     
     # Load configuration
     config = load_config()
-    mode_name = config.get("mode", "normal")
+    mode_name = config.get("mode", "default")
+    
+    # Map 'normal' to 'default' for backwards compatibility
+    if mode_name == "normal":
+        mode_name = "default"
+        print("📝 Note: 'normal' mode is now called 'default'")
     
     print(f"Mode: {mode_name}")
     
-    # Import the mode module
-    mode_module = import_mode(mode_name)
-    if mode_module is None:
-        print("❌ Failed to load mode, falling back to normal mode")
-        mode_module = import_mode("normal")
+    # Import the mode module (default is already imported)
+    if mode_name == "default":
+        mode_module = default_mode
+    else:
+        mode_module = import_mode(mode_name)
         if mode_module is None:
-            print("❌ Could not load normal mode either - exiting")
-            return
+            print("❌ Failed to load mode, falling back to default mode")
+            mode_module = default_mode
     
     try:
         # Create and initialize bird

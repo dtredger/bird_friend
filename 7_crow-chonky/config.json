@@ -3,6 +3,7 @@
   "_description": "Modify these settings to customize your bird's behavior. Save and reset board for changes to take effect.",
   
   "debug": false,
+  "use_deep_sleep": true,
   "interval_minutes": 60,
 
   "battery": {

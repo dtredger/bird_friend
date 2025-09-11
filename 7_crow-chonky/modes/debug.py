@@ -16,6 +16,8 @@ Tests performed:
 """
 
 import time
+# Import the default mode to access core light_rotate_hoot function
+import modes.default as default_mode
 
 
 def test_battery(crow, config):
@@ -159,9 +161,10 @@ def test_audio(crow, config):
 
 
 def test_full_action_sequence(crow, config):
-    """Test the complete action sequence"""
+    """Test the complete action sequence using default mode's function"""
     print("\n--- Full Action Sequence Test ---")
-    crow.light_rotate_hoot()
+    print("Using core light_rotate_hoot function from default mode...")
+    default_mode.light_rotate_hoot(crow)
 
 
 def system_info(crow, config):
@@ -193,6 +196,7 @@ def system_info(crow, config):
 def run(crow, config):
     """Run debug mode - comprehensive component testing"""
     print("🔧 Starting debug mode - component testing and diagnostics")
+    print("Core functionality imported from default mode")
     
     try:
         # Display system info
@@ -205,7 +209,7 @@ def run(crow, config):
         test_light_sensor(crow, config)
         test_audio(crow, config)
         
-        # Test full sequence
+        # Test full sequence using default mode's function
         test_full_action_sequence(crow, config)
         
         print("\n✅ All component tests completed!")
