@@ -15,7 +15,7 @@ Hardware Setup:
 - Speaker: Connect 4-8Ω speaker to built-in amplifier terminals
 - LEDs: Connect to pin A0 through 200Ω resistor to GND
 - Light sensor: Connect photoresistor between 3.3V and A1, with 10kΩ pulldown to GND
-- Button: Connect momentary button between D2 and GND (auto-enabled for global control)
+- Button: Connect button between D2 and GND (auto-enabled for global control)
 - Battery monitoring: Connect voltage divider (BAT → 100kΩ → A3 → 100kΩ → GND)
 """
 
@@ -56,11 +56,7 @@ class ModeManager:
         self.load_mode(self.current_mode_name)
     
     def load_mode(self, mode_name):
-        """Load and initialize a mode module"""
-        # Map 'normal' to 'default' for backwards compatibility
-        if mode_name == "normal":
-            mode_name = "default"
-        
+        """Load and initialize a mode module"""        
         print(f"📦 Loading mode: {mode_name}")
         
         try:
@@ -205,7 +201,7 @@ class CrowBird:
         if button_enabled or "button" not in self.config:
             try:
                 from button import Button
-                button_pin_name = button_config.get("pin", "D2")
+                button_pin_name = button_config.get("pin", "D6")
                 button_pin = getattr(board, button_pin_name)
                 
                 # Create button for global control

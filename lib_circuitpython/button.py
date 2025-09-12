@@ -16,7 +16,7 @@ Example Usage:
     def on_button_press():
         print("Button pressed!")
     
-    button = Button(board.D2, on_press=on_button_press)
+    button = Button(board.D6, on_press=on_button_press)
     
     # In main loop:
     while True:
@@ -47,7 +47,7 @@ class Button:
         Initialize button with callbacks and timing parameters.
         
         Args:
-            pin: CircuitPython pin object (e.g., board.D2)
+            pin: CircuitPython pin object (e.g., board.D6)
             on_press: Callback function for single press (optional)
             on_long_press: Callback function for long press (optional)
             on_double_press: Callback function for double press (optional)
@@ -277,4 +277,4 @@ def test_button(pin, duration_seconds=30):
 if __name__ == "__main__":
     # Example usage
     import board
-    test_button(board.D2, duration_seconds=30)
+    test_button(board.D6, duration_seconds=30)

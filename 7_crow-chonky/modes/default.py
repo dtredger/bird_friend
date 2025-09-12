@@ -83,7 +83,7 @@ def run(crow, config):
     print("🕐 Starting default mode - standard timed operation")
     
     interval_minutes = config.get("interval_minutes", 60)
-    use_deep_sleep = config.get("use_deep_sleep", True)
+    use_deep_sleep = config.get("use_deep_sleep", False)
     
     print(f"Checking every {interval_minutes} minutes")
     print(f"Deep sleep mode: {'enabled' if use_deep_sleep else 'disabled'}")
