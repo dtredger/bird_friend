@@ -15,7 +15,7 @@ Hardware Setup:
 - Speaker: Connect 4-8Ω speaker to built-in amplifier terminals
 - LEDs: Connect to pin A0 through 200Ω resistor to GND
 - Light sensor: Connect photoresistor between 3.3V and A1, with 10kΩ pulldown to GND
-- Button: Connect button between D2 and GND (auto-enabled for global control)
+- Button: Connect momentary button between D2 and GND (auto-enabled for global control)
 - Battery monitoring: Connect voltage divider (BAT → 100kΩ → A3 → 100kΩ → GND)
 """
 
