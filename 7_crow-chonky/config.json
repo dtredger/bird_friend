@@ -9,8 +9,7 @@
   "available_modes": [
     "default",
     "clock", 
-    "debug",
-    "button_test"
+    "debug"
   ],
 
   "battery": {
