@@ -5,10 +5,10 @@ Crow Bird for Adafruit RP2040 Prop-Maker Feather - Global Button Control System
 This is the main entry point with global button control for mode switching.
 
 Global Button Controls:
-- Long press (1500ms+): Cycle through available modes
+- Long press (1500ms+): Cycle through available modes (configured in config.json)
 - Short press (<1500ms): Call current mode's button_pressed() method
 
-Available modes cycle: default → debug → demo → manual → button_test → battery_monitor → single
+Available modes are defined in config.json under "available_modes"
 
 Hardware Setup:
 - Servo: Plug directly into built-in 3-pin servo header
@@ -43,21 +43,93 @@ class ModeManager:
         self.crow = crow
         self.config = config
         
-        # Available modes in cycle order
-        self.available_modes = [
-            "default", "debug", "demo", "manual", 
-            "button_test", "battery_monitor", "single"
-        ]
+        # Load available modes from config with fallback
+        self.available_modes = self._load_available_modes()
+        
+        # Validate that at least default mode is available
+        if "default" not in self.available_modes:
+            print("⚠️ Warning: 'default' mode not in available_modes, adding it")
+            self.available_modes.insert(0, "default")
         
         self.current_mode_name = config.get("mode", "default")
+        
+        # Validate current mode is in available modes
+        if self.current_mode_name not in self.available_modes:
+            print(f"⚠️ Warning: configured mode '{self.current_mode_name}' not in available_modes")
+            print(f"   Falling back to 'default' mode")
+            self.current_mode_name = "default"
+        
         self.current_mode_module = None
         
         # Load initial mode
         self.load_mode(self.current_mode_name)
     
+    def _load_available_modes(self):
+        """Load available modes from config with validation"""
+        # Try to get from main config first
+        available_modes = self.config.get("available_modes", None)
+        
+        # If not found, try the underscore version (documentation format)
+        if available_modes is None:
+            available_modes = self.config.get("_available_modes", None)
+        
+        # Fallback to default modes if nothing in config
+        if available_modes is None:
+            print("⚠️ No available_modes found in config, using defaults")
+            available_modes = ["default", "debug", "button_test", "battery_monitor"]
+        
+        # Validate that it's a list
+        if not isinstance(available_modes, list):
+            print("⚠️ available_modes in config is not a list, using defaults")
+            available_modes = ["default", "debug", "button_test", "battery_monitor"]
+        
+        # Filter out empty strings and ensure all are strings
+        available_modes = [str(mode).strip() for mode in available_modes if str(mode).strip()]
+        
+        if not available_modes:
+            print("⚠️ available_modes list is empty, using defaults")
+            available_modes = ["default", "debug", "button_test", "battery_monitor"]
+        
+        print(f"📋 Available modes from config: {available_modes}")
+        return available_modes
+    
+    def _import_mode_safely(self, mode_name):
+        """Safely import a mode module - CircuitPython compatible"""
+        if mode_name == "default":
+            return default_mode
+        
+        try:
+            # Simple approach that works in CircuitPython
+            # We'll use exec to dynamically import, which is the most reliable method
+            exec(f"import modes.{mode_name} as imported_module")
+            return locals()['imported_module']
+            
+        except ImportError as e:
+            print(f"❌ Import error for mode {mode_name}: {e}")
+            print(f"   Make sure file 'modes/{mode_name}.py' exists")
+            return None
+        except SyntaxError as e:
+            print(f"❌ Syntax error in mode {mode_name}: {e}")
+            print(f"   Check the Python syntax in 'modes/{mode_name}.py'")
+            return None
+        except Exception as e:
+            print(f"❌ Unexpected error importing mode {mode_name}: {e}")
+            print(f"   Error type: {type(e).__name__}")
+            return None
+    
     def load_mode(self, mode_name):
         """Load and initialize a mode module"""        
         print(f"📦 Loading mode: {mode_name}")
+        
+        # Validate mode is in available modes
+        if mode_name not in self.available_modes:
+            print(f"❌ Mode '{mode_name}' not in available modes: {self.available_modes}")
+            if "default" in self.available_modes:
+                print("🔄 Falling back to default mode")
+                mode_name = "default"
+            else:
+                print("💥 Critical: default mode not available!")
+                return False
         
         try:
             # Cleanup current mode if it has a cleanup method
@@ -68,18 +140,25 @@ class ModeManager:
                 except Exception as e:
                     print(f"⚠️ Mode cleanup error: {e}")
             
-            # Import new mode
-            if mode_name == "default":
-                self.current_mode_module = default_mode
-            else:
-                module_name = f"modes.{mode_name}"
-                self.current_mode_module = __import__(module_name, fromlist=[mode_name])
+            # Import new mode using safe import method
+            new_module = self._import_mode_safely(mode_name)
             
+            if new_module is None:
+                if mode_name != "default":
+                    print("🔄 Falling back to default mode")
+                    return self.load_mode("default")
+                else:
+                    raise Exception("Cannot load default mode!")
+            
+            self.current_mode_module = new_module
             self.current_mode_name = mode_name
             
             # Initialize mode if it has an init method
             if hasattr(self.current_mode_module, 'init'):
-                self.current_mode_module.init(self.crow, self.config)
+                try:
+                    self.current_mode_module.init(self.crow, self.config)
+                except Exception as e:
+                    print(f"⚠️ Mode init error: {e}")
             
             print(f"✅ Mode loaded: {mode_name}")
             
@@ -90,17 +169,23 @@ class ModeManager:
             except (ValueError, Exception):
                 self.crow.leds.flash_eyes(times=1)
             
+            return True
+            
         except Exception as e:
             print(f"❌ Failed to load mode {mode_name}: {e}")
+            print(f"   Error details: {type(e).__name__}: {e}")
             if mode_name != "default":
                 print("🔄 Falling back to default mode")
-                self.load_mode("default")
+                return self.load_mode("default")
+            else:
+                raise Exception(f"Cannot load default mode: {e}")
     
     def cycle_mode(self):
         """Switch to the next available mode"""
         try:
             current_index = self.available_modes.index(self.current_mode_name)
         except ValueError:
+            print(f"⚠️ Current mode '{self.current_mode_name}' not in available modes")
             current_index = 0
         
         next_index = (current_index + 1) % len(self.available_modes)
@@ -109,7 +194,9 @@ class ModeManager:
         print(f"🔄 Mode switching: {self.current_mode_name} → {next_mode}")
         print(f"   ({current_index + 1}/{len(self.available_modes)}) → ({next_index + 1}/{len(self.available_modes)})")
         
-        self.load_mode(next_mode)
+        success = self.load_mode(next_mode)
+        if not success:
+            print("❌ Mode switch failed, staying in current mode")
     
     def handle_button_press(self):
         """Handle short button press - delegate to current mode"""
@@ -119,12 +206,22 @@ class ModeManager:
                 self.current_mode_module.button_pressed(self.crow, self.config)
             except Exception as e:
                 print(f"💥 Error in {self.current_mode_name}.button_pressed(): {e}")
+                print(f"   Error details: {type(e).__name__}: {e}")
                 # Flash error indicator
                 self.crow.leds.flash_eyes(times=5)
         else:
             print(f"ℹ️ Mode {self.current_mode_name} doesn't implement button_pressed()")
             # Flash to indicate button was received but no handler
             self.crow.leds.flash_eyes(times=1)
+    
+    def get_mode_info(self):
+        """Get information about current mode and available modes"""
+        return {
+            "current_mode": self.current_mode_name,
+            "available_modes": self.available_modes,
+            "current_position": self.available_modes.index(self.current_mode_name) + 1 if self.current_mode_name in self.available_modes else 0,
+            "total_modes": len(self.available_modes)
+        }
 
 
 class CrowBird:
@@ -135,7 +232,7 @@ class CrowBird:
         self.config = config
         self.setup_power()
         self.setup_components()
-        print("🐦 Crow Bird initialized with global button control")
+        print("🐦 Crow Bird initialized with config-driven modes")
         
     def setup_power(self):
         """Enable external power for servo and audio"""
@@ -291,16 +388,29 @@ def load_config():
     except (OSError, ValueError) as e:
         print(f"⚠️ config.json not found or invalid: {e}")
         print("Using default settings with global button control")
-        return None
+        # Return a minimal working config
+        return {
+            "mode": "default",
+            "available_modes": ["default", "debug"],
+            "pins": {"led": "A0", "light_sensor": "A1", "battery": ""},
+            "battery": {"enabled": False},
+            "button": {"enabled": True, "pin": "D6", "long_press_ms": 1500},
+            "audio": {"directory": "audio", "sample_rate": 11000, "volume": 0.6},
+            "sensors": {"light_threshold": 1000},
+            "leds": {"max_brightness": 0.8},
+            "servo": {"speed": 0.02, "pause": 0.5},
+            "behavior": {"night_flash_count": 2}
+        }
 
 
 def main():
-    """Main entry point with global button control and mode management"""
-    print("🐦 Crow Bird starting with Global Button Control! 🐦")
+    """Main entry point with global button control and configurable mode management"""
+    print("🐦 Crow Bird starting with Config-Driven Modes! 🐦")
     print("=" * 60)
     print("GLOBAL BUTTON CONTROLS:")
-    print("  Long press (1500ms+) = Cycle through modes")
+    print("  Long press (1500ms+) = Cycle through available modes")
     print("  Short press (<1500ms) = Current mode action")
+    print("MODES ARE NOW CONFIGURED IN config.json!")
     print("=" * 60)
     
     # Load configuration
@@ -313,11 +423,20 @@ def main():
         # Create mode manager for mode switching
         mode_manager = ModeManager(crow, config)
         
+        # Display mode information
+        mode_info = mode_manager.get_mode_info()
+        print(f"🚀 Starting in mode: {mode_info['current_mode']}")
+        print(f"Available modes: {' → '.join(mode_info['available_modes'])}")
+        print(f"Mode position: {mode_info['current_position']}/{mode_info['total_modes']}")
+        print()
+        
         # Set up global button controls if button is available
         if crow.button:
             def on_long_press():
                 print("\n🔄 LONG PRESS DETECTED - Cycling modes...")
                 mode_manager.cycle_mode()
+                mode_info = mode_manager.get_mode_info()
+                print(f"Now in mode: {mode_info['current_mode']} ({mode_info['current_position']}/{mode_info['total_modes']})")
                 print("Ready for button input...\n")
             
             def on_short_press():
@@ -339,10 +458,6 @@ def main():
         else:
             print("⚠️ No button available - using mode from config only")
             print()
-        
-        print(f"🚀 Starting in mode: {mode_manager.current_mode_name}")
-        print(f"Available modes: {' → '.join(mode_manager.available_modes)}")
-        print()
         
         # Main control loop with global button handling
         while True:
@@ -369,6 +484,7 @@ def main():
                 break
             except Exception as e:
                 print(f"💥 Fatal error in main loop: {e}")
+                print(f"   Error details: {type(e).__name__}: {e}")
                 # Try to flash LEDs to indicate error
                 try:
                     crow.leds.flash_eyes(times=10)
@@ -378,6 +494,7 @@ def main():
                 
     except Exception as e:
         print(f"💥 Fatal startup error: {e}")
+        print(f"   Error details: {type(e).__name__}: {e}")
         # Try to flash LEDs to indicate error
         try:
             error_leds = Leds(board.A0)

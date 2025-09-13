@@ -2,10 +2,16 @@
   "_comment": "Configuration file for Prop-Maker Feather Crow Bird",
   "_description": "Modify these settings to customize your bird's behavior. Save and reset board for changes to take effect.",
   
-  "mode": "clock",
   "debug": false,
   "interval_minutes": 60,
   "use_deep_sleep": false,
+
+  "available_modes": [
+    "default",
+    "clock", 
+    "debug",
+    "button_test"
+  ],
 
   "battery": {
     "enabled": false
@@ -62,20 +68,26 @@
     "night_flash_count": 2,
     "action_flash_count": 3
   },
+
+  "battery_monitor_interval_minutes": 30,
+  "battery_monitor_force_deep_sleep": true,
   
-  "_available_modes": [
-    "default",
-    "clock", 
-    "debug",
-    "button_test",
-    "battery_monitor"
-  ],
+  "_mode_descriptions": {
+    "_description": "Information about available modes - modify 'available_modes' array above to enable/disable",
+    
+    "default": "Standard timed operation - checks conditions every interval and performs actions",
+    "clock": "Hourly chime mode - chimes 1-12 times based on current hour setting",
+    "debug": "Component testing and diagnostics - tests all hardware individually", 
+    "button_test": "Button functionality testing - comprehensive button diagnostics",
+    "battery_monitor": "Ultra low power battery monitoring - periodic status checks with deep sleep"
+  },
   
   "_presets": {
     "_description": "Copy these values to main config for different behaviors",
     
     "clock_mode": {
       "mode": "clock",
+      "available_modes": ["clock", "debug", "default"],
       "leds": { "max_brightness": 0.9 },
       "audio": { "volume": 0.7 },
       "clock": { "chime_volume": 0.8 }
@@ -83,12 +95,15 @@
     
     "quiet_clock": {
       "mode": "clock", 
+      "available_modes": ["clock", "default"],
       "leds": { "max_brightness": 0.4 },
       "audio": { "volume": 0.4 },
       "clock": { "chime_volume": 0.5 }
     },
     
     "quiet_mode": {
+      "mode": "default",
+      "available_modes": ["default", "battery_monitor"],
       "leds": { "max_brightness": 0.3 },
       "audio": { "volume": 0.4 },
       "interval_minutes": 120,
@@ -96,6 +111,8 @@
     },
     
     "active_mode": {
+      "mode": "default",
+      "available_modes": ["default", "debug", "clock", "button_test"],
       "leds": { "max_brightness": 1.0 },
       "audio": { "volume": 0.9 },
       "interval_minutes": 15,
@@ -103,10 +120,21 @@
     },
     
     "testing_mode": {
+      "mode": "debug",
+      "available_modes": ["debug", "button_test", "default"],
       "debug": true,
       "interval_minutes": 1,
       "leds": { "max_brightness": 0.5 },
       "audio": { "volume": 0.5 }
+    },
+
+    "battery_saver": {
+      "mode": "battery_monitor",
+      "available_modes": ["battery_monitor", "default"],
+      "use_deep_sleep": true,
+      "battery_monitor_interval_minutes": 60,
+      "leds": { "max_brightness": 0.2 },
+      "audio": { "volume": 0.3 }
     }
   }
 }
