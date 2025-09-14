@@ -15,11 +15,11 @@ import digitalio
 import json
 
 # Import our CircuitPython bird libraries
-from lib.servos import Servo
-from lib.leds import Leds
-from lib.sensors import LightSensor
-from lib.amplifier import Amplifier
-from lib.battery import Battery
+from servos import Servo
+from leds import Leds
+from sensors import LightSensor
+from amplifier import Amplifier
+from battery import Battery
 
 # Import our mode manager
 from modes.mode_manager import ModeManager
@@ -206,17 +206,22 @@ def load_config():
 
 
 def main():
-    """Main entry point - clean BaseMode architecture"""
-    print("🐦 Crow Bird - Clean BaseMode Architecture! 🐦")
+    """
+    COMPLETELY NON-BLOCKING main entry point.
+
+    No more sleep calls = immediate responsiveness!
+    """
+    print("🐦 Crow Bird - NON-BLOCKING Architecture! 🐦")
     print("=" * 60)
-    print("ARCHITECTURE FEATURES:")
-    print("  ✅ BaseMode contains default bird behavior")
-    print("  ✅ All modes inherit automatic button handling")
-    print("  ✅ Clean mode manager with no legacy code")
-    print("  ✅ Simplified button flow")
+    print("RESPONSIVENESS FEATURES:")
+    print("  ✅ NO time.sleep() calls anywhere")
+    print("  ✅ Immediate button response")
+    print("  ✅ Immediate keyboard interrupt response")
+    print("  ✅ Instant mode switching")
+    print("  ✅ Maximum system responsiveness")
     print("BUTTON CONTROLS:")
-    print("  Long press = Cycle modes (handled globally)")
-    print("  Short press = Mode action (handled by each mode automatically)")
+    print("  Long press = Cycle modes (instant response)")
+    print("  Short press = Mode action (instant response)")
     print("=" * 60)
 
     # Load configuration
@@ -226,86 +231,136 @@ def main():
         # Create and initialize bird hardware
         crow = CrowBird(config)
 
-        # Create mode manager (handles all mode loading/switching)
+        # Create mode manager
         mode_manager = ModeManager(crow, config)
 
-        # Display mode information
-        mode_info = mode_manager.get_mode_info()
-        print(f"🚀 Starting mode: {mode_info['current_mode']}")
-        print(f"Mode class: {mode_info['mode_class']}")
-        print(f"Available modes: {' → '.join(mode_info['available_modes'])}")
-        print(f"Position: {mode_info['current_position']}/{mode_info['total_modes']}")
-        print()
-
-        # Set up GLOBAL button for mode switching ONLY
+        # Set up GLOBAL button for INSTANT mode switching
         if crow.button:
-            def on_mode_switch():
-                """Handle long press - cycle to next mode"""
-                print("\n🔄 LONG PRESS DETECTED - Cycling modes...")
+            def on_instant_mode_switch():
+                """Handle long press - INSTANT mode switching!"""
+                print("\n🔄 LONG PRESS - Switching modes INSTANTLY...")
                 mode_manager.cycle_mode()
                 mode_info = mode_manager.get_mode_info()
-                print(f"✅ Now in mode: {mode_info['current_mode']} ({mode_info['mode_class']})")
+                print(f"✅ Switched to: {mode_info['current_mode']} ({mode_info['mode_class']})")
                 print(f"📍 Position: {mode_info['current_position']}/{mode_info['total_modes']}")
-                print("Ready for mode operation...\n")
+                print("Ready for operation...\n")
 
-            # ONLY set long press callback - short press handled by modes automatically
-            crow.button.on_long_press = on_mode_switch
-            # Explicitly clear short press to avoid confusion
-            crow.button.on_press = None
+            # Set INSTANT mode switching callback
+            crow.button.on_long_press = on_instant_mode_switch
+            crow.button.on_press = None  # Handled by modes
 
-            print(f"🎮 Global Button Control (Mode Switching Only):")
+            print(f"🎮 INSTANT Button Control:")
             print(f"   Pin: {config.get('button', {}).get('pin', 'D6')}")
-            print(f"   Long press: Cycle modes")
-            print(f"   Short press: Handled automatically by current mode")
+            print(f"   Long press: INSTANT mode cycling")
+            print(f"   Short press: INSTANT mode actions")
             print()
         else:
-            print("⚠️ No global button available - mode switching disabled")
-            print()
+            print("⚠️ No button - mode switching disabled")
 
-        # CLEAN MAIN LOOP - minimal complexity
-        print("🚀 Starting mode operation...")
-        print("All button handling and timing managed by BaseMode architecture")
-        print()
+        # Track mode running state
+        mode_running = False
+        current_mode_instance = None
 
-        # Main operation loop
         while True:
             try:
-                # Handle global mode switching (long press only)
+                # *** INSTANT GLOBAL BUTTON HANDLING ***
                 if crow.button:
                     crow.button.update()
 
-                # Run the current mode - it handles EVERYTHING else
-                # This includes:
-                # - Short button press handling
-                # - Timing and intervals
-                # - Bird actions
-                # - Status updates
-                # - Error handling
-                mode_manager.run_current_mode()
+                # *** START MODE IF NOT RUNNING ***
+                if not mode_running:
+                    print(f"🏃 Starting mode: {mode_manager.current_mode_name}")
+                    # Get reference to current mode instance
+                    current_mode_instance = mode_manager.current_mode_instance
+                    mode_running = True
 
-                # If we get here, the mode exited normally
-                print("🏁 Mode completed - this shouldn't normally happen")
-                break
+                # *** RUN MODE SINGLE ITERATION ***
+                # Instead of calling the blocking run() method,
+                # we'll implement a non-blocking mode execution
+                if current_mode_instance and mode_running:
+                    try:
+                        # Initialize mode if needed
+                        if not current_mode_instance.is_running:
+                            current_mode_instance.init(crow, config)
+                            current_mode_instance.is_running = True
+                            current_time = time.monotonic()
+                            current_mode_instance.last_action_time = current_time
+
+                        # Single non-blocking mode update
+                        current_time = time.monotonic()
+
+                        # Button handling (automatic in BaseMode)
+                        if crow.button:
+                            crow.button.update()
+
+                        # Check for timed actions
+                        time_since_last_action = current_time - current_mode_instance.last_action_time
+                        if time_since_last_action >= current_mode_instance.action_interval:
+                            print(f"\n⏰ Mode action time!")
+                            current_mode_instance.check_conditions_and_act(crow, config)
+                            current_mode_instance.last_action_time = current_time
+
+                        # Mode-specific updates
+                        time_since_status = current_time - current_mode_instance.last_status_time
+                        if time_since_status >= current_mode_instance.status_interval:
+                            should_continue = current_mode_instance.mode_update(crow, config)
+                            current_mode_instance.last_status_time = current_time
+
+                            if should_continue is False:
+                                print(f"🏁 Mode {mode_manager.current_mode_name} completed")
+                                mode_running = False
+
+                        # Check scheduled actions if available
+                        if hasattr(current_mode_instance, 'check_scheduled_actions'):
+                            current_mode_instance.check_scheduled_actions(crow, config)
+
+                        # Check for mode exit conditions
+                        if hasattr(current_mode_instance, 'should_exit'):
+                            if current_mode_instance.should_exit(crow, config):
+                                print(f"🏁 Mode {mode_manager.current_mode_name} requesting exit")
+                                mode_running = False
+
+                    except Exception as e:
+                        print(f"💥 Error in mode execution: {e}")
+                        try:
+                            crow.leds.flash_eyes(times=5)
+                        except:
+                            pass
+                        mode_running = False
+
+                # *** CHECK FOR MODE SWITCH ***
+                # If mode stopped running, we might need to restart it or switch modes
+                if not mode_running:
+                    # Check if mode manager switched modes
+                    if current_mode_instance != mode_manager.current_mode_instance:
+                        print(f"🔄 Mode switch detected")
+                        # Cleanup old mode
+                        if current_mode_instance:
+                            try:
+                                current_mode_instance.cleanup(crow, config)
+                            except:
+                                pass
+                        current_mode_instance = mode_manager.current_mode_instance
+                    # Restart the current mode
+                    mode_running = True
+
+                # *** NO SLEEP - MAXIMUM RESPONSIVENESS ***
+                # The loop runs as fast as possible for INSTANT response
+                # to button presses, keyboard interrupts, and everything else!
 
             except KeyboardInterrupt:
-                print("\n🛑 Interrupted by user")
+                print("\n🛑 INSTANT interrupt response!")
                 break
             except Exception as e:
                 print(f"💥 Fatal error: {e}")
-                print(f"   Error type: {type(e).__name__}")
                 try:
-                    crow.leds.flash_eyes(times=10)  # Error indication
+                    crow.leds.flash_eyes(times=10)
                 except:
                     pass
                 break
 
-            # Very small delay for mode switching responsiveness
-            time.sleep(0.01)
-
     except Exception as e:
         print(f"💥 Fatal startup error: {e}")
-        print(f"   Error details: {type(e).__name__}: {e}")
-        # Try to show error via LEDs
         try:
             error_leds = Leds(board.A0)
             error_leds.flash_eyes(times=10)
@@ -313,11 +368,11 @@ def main():
         except:
             pass
     finally:
-        # Clean up everything
+        # Cleanup
         if 'crow' in locals():
             crow.cleanup()
         print("🐦 Crow bird shutdown complete.")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
