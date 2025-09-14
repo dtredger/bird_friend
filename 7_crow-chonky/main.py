@@ -207,21 +207,9 @@ def load_config():
 
 def main():
     """
-    COMPLETELY NON-BLOCKING main entry point.
-
-    No more sleep calls = immediate responsiveness!
+    main entry point.
     """
-    print("🐦 Crow Bird - NON-BLOCKING Architecture! 🐦")
-    print("=" * 60)
-    print("RESPONSIVENESS FEATURES:")
-    print("  ✅ NO time.sleep() calls anywhere")
-    print("  ✅ Immediate button response")
-    print("  ✅ Immediate keyboard interrupt response")
-    print("  ✅ Instant mode switching")
-    print("  ✅ Maximum system responsiveness")
-    print("BUTTON CONTROLS:")
-    print("  Long press = Cycle modes (instant response)")
-    print("  Short press = Mode action (instant response)")
+    print("🐦 Crow Bird 🐦")
     print("=" * 60)
 
     # Load configuration
@@ -236,23 +224,22 @@ def main():
 
         # Set up GLOBAL button for INSTANT mode switching
         if crow.button:
-            def on_instant_mode_switch():
-                """Handle long press - INSTANT mode switching!"""
-                print("\n🔄 LONG PRESS - Switching modes INSTANTLY...")
+            def on_mode_switch():
+                """Handle long press"""
+                print("\n🔄 LONG PRESS - Switching modes...")
                 mode_manager.cycle_mode()
                 mode_info = mode_manager.get_mode_info()
                 print(f"✅ Switched to: {mode_info['current_mode']} ({mode_info['mode_class']})")
-                print(f"📍 Position: {mode_info['current_position']}/{mode_info['total_modes']}")
                 print("Ready for operation...\n")
 
             # Set INSTANT mode switching callback
-            crow.button.on_long_press = on_instant_mode_switch
+            crow.button.on_long_press = on_mode_switch
             crow.button.on_press = None  # Handled by modes
 
-            print(f"🎮 INSTANT Button Control:")
+            print(f"🎮 Button Control:")
             print(f"   Pin: {config.get('button', {}).get('pin', 'D6')}")
-            print(f"   Long press: INSTANT mode cycling")
-            print(f"   Short press: INSTANT mode actions")
+            print(f"   Long press: mode cycling")
+            print(f"   Short press: mode actions")
             print()
         else:
             print("⚠️ No button - mode switching disabled")
