@@ -68,7 +68,7 @@ class ClockMode(BaseMode):
                     crow.button.update()
 
                 # *** Process scheduled actions (chime sequences) ***
-                self.check_scheduled_actions(crow, config)
+                self.check_scheduled_actions()
 
                 # Check if it's time to chime (instead of regular actions)
                 time_since_last_chime = current_time - self.last_chime_time

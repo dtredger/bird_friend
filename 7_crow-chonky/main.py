@@ -312,7 +312,7 @@ def main():
 
                         # Check scheduled actions if available
                         if hasattr(current_mode_instance, 'check_scheduled_actions'):
-                            current_mode_instance.check_scheduled_actions(crow, config)
+                            current_mode_instance.check_scheduled_actions()
 
                         # Check for mode exit conditions
                         if hasattr(current_mode_instance, 'should_exit'):
