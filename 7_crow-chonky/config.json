@@ -19,7 +19,7 @@
   "button": {
     "enabled": true,
     "pin": "D6",
-    "long_press_ms": 1500,
+    "long_press_ms": 1000,
     "_note": "Global control: Long press = cycle modes, Short press = mode action"
   },
   

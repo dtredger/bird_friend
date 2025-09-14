@@ -1,9 +1,9 @@
 """
-ModeManager - Clean BaseMode Architecture
-========================================
+ModeManager - Clean BaseMode Architecture with Fixed Module Import
+================================================================
 
 Manages mode loading and switching for BaseMode-derived modes only.
-All legacy function-based mode support has been removed.
+Now handles the _mode.py file naming convention properly.
 
 All modes are assumed to:
 - Inherit from BaseMode
@@ -62,8 +62,11 @@ class ModeManager:
             return BaseMode()
 
         try:
-            # Try to import the mode module
-            exec(f"import modes.{mode_name} as mode_module")
+            module_name = f"{mode_name}_mode"
+            print(f"🔍 Trying to import: modes.{module_name}")
+
+            # Try to import the mode module with _mode suffix
+            exec(f"import modes.{module_name} as mode_module")
             mode_module = locals()['mode_module']
 
             # Look for a class that inherits from BaseMode
@@ -74,15 +77,34 @@ class ModeManager:
                     print(f"🏗️ Found mode class: {attr_name}")
                     return attr()
 
-            raise Exception(f"No BaseMode-derived class found in mode {mode_name}")
+            raise Exception(f"No BaseMode-derived class found in mode {module_name}")
 
         except ImportError as e:
-            print(f"❌ Cannot import mode {mode_name}: {e}")
-            if mode_name != "default":
-                print("🔄 Falling back to default BaseMode")
-                return BaseMode()
-            else:
-                raise Exception("Cannot create default mode")
+            print(f"❌ Cannot import mode {mode_name} (tried modes.{module_name}): {e}")
+
+            # Try without _mode suffix as fallback
+            try:
+                print(f"🔍 Fallback: Trying to import: modes.{mode_name}")
+                exec(f"import modes.{mode_name} as mode_module")
+                mode_module = locals()['mode_module']
+
+                # Look for a class that inherits from BaseMode
+                for attr_name in dir(mode_module):
+                    attr = getattr(mode_module, attr_name)
+                    if (hasattr(attr, '__bases__') and
+                            any('BaseMode' in str(base) for base in attr.__bases__)):
+                        print(f"🏗️ Found mode class: {attr_name}")
+                        return attr()
+
+                raise Exception(f"No BaseMode-derived class found in mode {mode_name}")
+
+            except ImportError as e2:
+                print(f"❌ Fallback also failed: {e2}")
+                if mode_name != "default":
+                    print("🔄 Falling back to default BaseMode")
+                    return BaseMode()
+                else:
+                    raise Exception("Cannot create default mode")
         except Exception as e:
             print(f"❌ Error creating mode {mode_name}: {e}")
             if mode_name != "default":
