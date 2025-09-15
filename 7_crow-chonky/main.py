@@ -1,12 +1,9 @@
 """
-Crow Bird Main - Clean BaseMode Architecture
-===========================================
+Crow Bird Main - Timer-Based Architecture
+=========================================
 
-Main entry point with clean BaseMode architecture.
-- ModeManager imported from separate file
-- All modes inherit from BaseMode
-- Button handling is automatic in modes
-- Global button only handles mode switching
+Main entry point with true timer-based scheduling.
+No polling, no busy loops - just responsive event handling.
 """
 
 import board
@@ -32,7 +29,7 @@ class CrowBird:
         self.config = config
         self.setup_power()
         self.setup_components()
-        print("🐦 Crow Bird initialized with BaseMode architecture")
+        print("🐦 Crow Bird initialized with timer-based architecture")
 
     def setup_power(self):
         """Enable external power for servo and audio"""
@@ -109,16 +106,12 @@ class CrowBird:
                 )
 
                 print(f"🎮 Global button ready on pin {button_pin_name}")
-                print(f"   Long press (≥{button_config.get('long_press_ms', 1500)}ms): Cycle modes")
-                print(f"   Short press: Handled automatically by each mode")
 
             except Exception as e:
                 print(f"⚠️ Global button setup failed: {e}")
-                print("   Mode switching disabled, but modes will work normally")
                 self.button = None
         else:
             self.button = None
-            print("ℹ️ Button explicitly disabled in config")
 
     def check_conditions(self):
         """Check light and battery conditions for mode decision making"""
@@ -207,9 +200,9 @@ def load_config():
 
 def main():
     """
-    main entry point.
+    Timer-based main entry point - no polling!
     """
-    print("🐦 Crow Bird 🐦")
+    print("🐦 Crow Bird - TIMER-BASED Architecture! 🐦")
     print("=" * 60)
 
     # Load configuration
@@ -222,136 +215,58 @@ def main():
         # Create mode manager
         mode_manager = ModeManager(crow, config)
 
-        # Set up GLOBAL button for INSTANT mode switching
+        # Set up GLOBAL button for mode switching
         if crow.button:
             def on_mode_switch():
-                """Handle long press"""
-                print("\n🔄 LONG PRESS - Switching modes...")
+                """Handle long press - mode switching!"""
+                print("\n🔄 Mode switch requested...")
                 mode_manager.cycle_mode()
                 mode_info = mode_manager.get_mode_info()
-                print(f"✅ Switched to: {mode_info['current_mode']} ({mode_info['mode_class']})")
-                print("Ready for operation...\n")
+                print(f"✅ Switched to: {mode_info['current_mode']}")
 
-            # Set INSTANT mode switching callback
+                # Re-initialize the new mode with timer scheduling
+                current_mode = mode_manager.current_mode_instance
+                if current_mode:
+                    current_mode.init(crow, config)
+                    schedule_next_action(current_mode, crow, config)
+
             crow.button.on_long_press = on_mode_switch
-            crow.button.on_press = None  # Handled by modes
-
-            print(f"🎮 Button Control:")
-            print(f"   Pin: {config.get('button', {}).get('pin', 'D6')}")
-            print(f"   Long press: mode cycling")
-            print(f"   Short press: mode actions")
-            print()
+            print("🎮 Timer-based button control ready")
         else:
             print("⚠️ No button - mode switching disabled")
 
-        # Track mode running state
-        mode_running = False
-        current_mode_instance = None
+        # Initialize the starting mode
+        current_mode = mode_manager.current_mode_instance
+        if current_mode:
+            current_mode.init(crow, config)
+            print(f"🚀 Mode initialized: {mode_manager.current_mode_name}")
 
+        # Schedule the first action
+        schedule_next_action(current_mode, crow, config)
+
+        print("⏰ Timer-based scheduling active")
+        print("🎯 Main loop starting (Ctrl+C to exit)...")
+
+        # SIMPLE, RESPONSIVE MAIN LOOP
         while True:
-            try:
-                # *** INSTANT GLOBAL BUTTON HANDLING ***
-                if crow.button:
-                    crow.button.update()
+            # Handle button presses
+            if crow.button:
+                crow.button.update()
 
-                # *** START MODE IF NOT RUNNING ***
-                if not mode_running:
-                    print(f"🏃 Starting mode: {mode_manager.current_mode_name}")
-                    # Get reference to current mode instance
-                    current_mode_instance = mode_manager.current_mode_instance
-                    mode_running = True
+            # Handle scheduled actions
+            current_mode = mode_manager.current_mode_instance
+            if current_mode and hasattr(current_mode, 'check_scheduled_actions'):
+                current_mode.check_scheduled_actions()
 
-                # *** RUN MODE SINGLE ITERATION ***
-                # Instead of calling the blocking run() method,
-                # we'll implement a non-blocking mode execution
-                if current_mode_instance and mode_running:
-                    try:
-                        # Initialize mode if needed
-                        if not current_mode_instance.is_running:
-                            current_mode_instance.init(crow, config)
-                            current_mode_instance.is_running = True
-                            current_time = time.monotonic()
-                            current_mode_instance.last_action_time = current_time
+            # CRITICAL: Small sleep to allow keyboard interrupts
+            time.sleep(0.01)  # 10ms - fast enough, allows interrupts
 
-                        # Single non-blocking mode update
-                        current_time = time.monotonic()
-
-                        # Button handling (automatic in BaseMode)
-                        if crow.button:
-                            crow.button.update()
-
-                        # Check for timed actions
-                        time_since_last_action = current_time - current_mode_instance.last_action_time
-                        if time_since_last_action >= current_mode_instance.action_interval:
-                            print(f"\n⏰ Mode action time!")
-                            current_mode_instance.check_conditions_and_act(crow, config)
-                            current_mode_instance.last_action_time = current_time
-
-                        # Mode-specific updates
-                        time_since_status = current_time - current_mode_instance.last_status_time
-                        if time_since_status >= current_mode_instance.status_interval:
-                            should_continue = current_mode_instance.mode_update(crow, config)
-                            current_mode_instance.last_status_time = current_time
-
-                            if should_continue is False:
-                                print(f"🏁 Mode {mode_manager.current_mode_name} completed")
-                                mode_running = False
-
-                        # Check scheduled actions if available
-                        if hasattr(current_mode_instance, 'check_scheduled_actions'):
-                            current_mode_instance.check_scheduled_actions()
-
-                        # Check for mode exit conditions
-                        if hasattr(current_mode_instance, 'should_exit'):
-                            if current_mode_instance.should_exit(crow, config):
-                                print(f"🏁 Mode {mode_manager.current_mode_name} requesting exit")
-                                mode_running = False
-
-                    except Exception as e:
-                        print(f"💥 Error in mode execution: {e}")
-                        try:
-                            crow.leds.flash_eyes(times=5)
-                        except:
-                            pass
-                        mode_running = False
-
-                # *** CHECK FOR MODE SWITCH ***
-                # If mode stopped running, we might need to restart it or switch modes
-                if not mode_running:
-                    # Check if mode manager switched modes
-                    if current_mode_instance != mode_manager.current_mode_instance:
-                        print(f"🔄 Mode switch detected")
-                        # Cleanup old mode
-                        if current_mode_instance:
-                            try:
-                                current_mode_instance.cleanup(crow, config)
-                            except:
-                                pass
-                        current_mode_instance = mode_manager.current_mode_instance
-                    # Restart the current mode
-                    mode_running = True
-
-                # *** NO SLEEP - MAXIMUM RESPONSIVENESS ***
-                # The loop runs as fast as possible for INSTANT response
-                # to button presses, keyboard interrupts, and everything else!
-
-            except KeyboardInterrupt:
-                print("\n🛑 INSTANT interrupt response!")
-                break
-            except Exception as e:
-                print(f"💥 Fatal error: {e}")
-                try:
-                    crow.leds.flash_eyes(times=10)
-                except:
-                    pass
-                break
-
+    except KeyboardInterrupt:
+        print("\n🛑 Keyboard interrupt received - exiting...")
     except Exception as e:
-        print(f"💥 Fatal startup error: {e}")
+        print(f"💥 Fatal error: {e}")
         try:
-            error_leds = Leds(board.A0)
-            error_leds.flash_eyes(times=10)
-            error_leds.deinit()
+            crow.leds.flash_eyes(times=10)
         except:
             pass
     finally:
@@ -361,5 +276,41 @@ def main():
         print("🐦 Crow bird shutdown complete.")
 
 
-# if __name__ == "__main__":
-#     main()
+def schedule_next_action(mode, crow, config):
+    """Schedule the next mode action using timer"""
+    if not mode:
+        return
+
+    interval_minutes = config.get("interval_minutes", 60)
+    interval_seconds = interval_minutes * 60
+
+    def perform_scheduled_action():
+        """Callback for timer-scheduled action"""
+        print(f"\n⏰ Timer-triggered action in {mode.mode_name} mode")
+
+        try:
+            # Perform the mode's action
+            mode.check_conditions_and_act(crow, config)
+
+            # Schedule the next action
+            schedule_next_action(mode, crow, config)
+
+        except Exception as e:
+            print(f"💥 Error in scheduled action: {e}")
+            # Still schedule next action to keep going
+            schedule_next_action(mode, crow, config)
+
+    # Schedule using the mode's alarm system
+    if hasattr(mode, 'schedule_action'):
+        action_id = mode.schedule_action(
+            interval_seconds,
+            perform_scheduled_action,
+            f"next_mode_action"
+        )
+        print(f"⏰ Next action scheduled in {interval_minutes} minutes (ID: {action_id})")
+    else:
+        print("⚠️ Mode doesn't support timer scheduling")
+
+
+if __name__ == "__main__":
+    main()

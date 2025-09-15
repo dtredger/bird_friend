@@ -1,15 +1,13 @@
 """
-BaseMode - Simple Syntax for CircuitPython
-==========================================
-
-No f-strings, no complex syntax, just basic Python that works on CircuitPython.
+BaseMode - Timer-Based Architecture
+===================================
 """
 
 import time
 
 
 class BaseMode:
-    """Simple base mode class with basic syntax"""
+    """Timer-based base mode class"""
 
     def __init__(self):
         # Mode identification
@@ -20,18 +18,14 @@ class BaseMode:
         # State tracking
         self.is_running = False
         self.start_time = 0
-        self.last_update_time = 0
-        self.last_action_time = 0
-        self.last_status_time = 0
 
-        # Simple alarm scheduling
+        # Timer-based scheduling
         self.scheduled_actions = []
         self.action_id = 0
 
-        # Timing
+        # Timing intervals (for reference, not polling)
         self.action_interval = 3600  # 1 hour in seconds
         self.status_interval = 30    # 30 seconds
-        self.update_interval = 0.01  # 10ms
 
 
     def init(self, crow, config):
@@ -40,9 +34,6 @@ class BaseMode:
 
         self.is_running = False
         self.start_time = time.monotonic()
-        self.last_update_time = 0
-        self.last_action_time = 0
-        self.last_status_time = 0
 
         # Get timing from config
         interval_minutes = config.get("interval_minutes", 60)
@@ -58,6 +49,8 @@ class BaseMode:
         except Exception as e:
             print("Error in mode_init: " + str(e))
             raise
+
+        self.is_running = True
 
     def schedule_action(self, delay_seconds, callback, name):
         """Schedule an action to happen after delay_seconds"""
@@ -113,72 +106,9 @@ class BaseMode:
             crow.button.on_press = button_pressed
             print("Button handling active")
 
-    def run(self, crow, config):
-        """Main run method with alarm processing"""
-        print("Starting " + self.mode_name + " mode")
-
-        if not self.is_running:
-            try:
-                self.init(crow, config)
-                self.is_running = True
-            except Exception as e:
-                print("Init failed: " + str(e))
-                return
-
-        self.show_mode_info(crow, config)
-
-        # Initial action
-        self.check_conditions_and_act(crow, config)
-        self.last_action_time = time.monotonic()
-
-        try:
-            while True:
-                current_time = time.monotonic()
-
-                # Handle button presses
-                if crow.button:
-                    crow.button.update()
-
-                # Process scheduled actions - KEY LINE!
-                self.check_scheduled_actions()
-
-                # Check for regular timed actions
-                time_since_action = current_time - self.last_action_time
-                if time_since_action >= self.action_interval:
-                    print("Time for scheduled action")
-                    self.check_conditions_and_act(crow, config)
-                    self.last_action_time = current_time
-
-                # Mode updates
-                time_since_status = current_time - self.last_status_time
-                if time_since_status >= self.status_interval:
-                    try:
-                        should_continue = self.mode_update(crow, config)
-                        if should_continue is False:
-                            break
-                    except Exception as e:
-                        print("Mode update error: " + str(e))
-                    self.last_status_time = current_time
-
-                # Exit check
-                if hasattr(self, 'should_exit'):
-                    if self.should_exit(crow, config):
-                        break
-
-                self.last_update_time = current_time
-
-                # NO SLEEP - immediate responsiveness!
-
-        except KeyboardInterrupt:
-            print("Mode interrupted")
-        except Exception as e:
-            print("Fatal error: " + str(e))
-        finally:
-            self.cleanup(crow, config)
-
     def check_conditions_and_act(self, crow, config):
         """Check conditions and act"""
-        print("=== Checking conditions ===")
+        print("=== Timer-triggered action ===")
 
         light_sufficient, condition = crow.check_conditions()
 
@@ -248,23 +178,12 @@ class BaseMode:
         except Exception as e:
             print("Cleanup error: " + str(e))
 
+        self.is_running = False
+
     # Methods to override in child classes
     def mode_init(self, crow, config):
         """Override for mode-specific initialization"""
         pass
-
-    def mode_update(self, crow, config):
-        """Override for mode-specific updates"""
-        # Show status every 30 seconds
-        current_time = time.monotonic()
-        if int(current_time) % 30 == 0 and int(current_time) != int(self.last_update_time):
-            scheduled_count = len(self.scheduled_actions)
-            print("Mode status - Scheduled actions: " + str(scheduled_count))
-        return True
-
-    def should_exit(self, crow, config):
-        """Override for custom exit conditions"""
-        return False
 
     def on_button_press(self, crow, config):
         """Override for button press handling"""
@@ -275,7 +194,7 @@ class BaseMode:
         """Override for mode-specific info"""
         interval_minutes = self.action_interval // 60
         print("=== " + self.mode_name + " Mode ===")
-        print("Action interval: " + str(interval_minutes) + " minutes")
+        print("Timer interval: " + str(interval_minutes) + " minutes")
         print("Alarm scheduling: ACTIVE")
         print("Button response: INSTANT")
         print("=" * 30)
@@ -287,9 +206,6 @@ class BaseMode:
             return time.monotonic() - self.start_time
         return 0
 
-    def get_time_until_next_action(self):
-        """Get time until next action"""
-        if self.last_action_time:
-            elapsed = time.monotonic() - self.last_action_time
-            return max(0, self.action_interval - elapsed)
-        return 0
+    def get_scheduled_count(self):
+        """Get number of scheduled actions"""
+        return len(self.scheduled_actions)
