@@ -7,7 +7,7 @@ All syntax errors have been fixed and it's ready to use.
 """
 
 import time
-from base_mode import BaseMode
+from modes.base_mode import BaseMode
 
 
 class ClockMode(BaseMode):
@@ -118,8 +118,7 @@ class ClockMode(BaseMode):
             time_since_last_chime = current_time - self.last_chime_time
             time_until_chime = self.chime_interval - time_since_last_chime
             scheduled_count = len(self.scheduled_actions)
-            print(f"🕐 Hour: {self.current_hour}, Next chime: {time_until_chime:.0f}s, "
-                  f"Scheduled actions: {scheduled_count}")
+            print(f"🕐 Hour: {self.current_hour}, Next chime: {time_until_chime:.0f}s, Scheduled actions: {scheduled_count}")
 
         return True  # Continue running
 
