@@ -29,12 +29,19 @@
     "battery": "",
     "_note": "Servo and audio use built-in hardware - no pin config needed"
   },
-  
+
   "audio": {
     "directory": "audio",
     "sample_rate": 11000,
     "volume": 0.6,
-    "_volume_range": "0.0 to 1.0"
+    "_volume_range": "0.0 to 1.0",
+    "sound_files": {
+      "crow_11000_16b.wav": 1,
+      "crow4_11000_16b.wav": 4
+    },
+    "_chime_strategies": ["intelligent", "random", "single_file_only", "repeat_single", "closest_match", "random_fill"],
+    "chime_strategy": "intelligent",
+    "fallback_behavior": "repeat_single"
   },
   
   "sensors": {

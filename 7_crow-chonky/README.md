@@ -9,6 +9,7 @@ This bird uses a Adafruit Propmaker Feather
 - The eyes are two LEDs wired in parallel with 200ohm resistor.
 - The light sensor is a photoresistor 
 - (temp sensor is built into the board but not used)
+- Button for mode-switch and time setting
 
 
 ## Modules
@@ -16,7 +17,7 @@ This bird uses modules from `/lib` for specific functionality. Currently, the mo
 - LEDs (eyes)
 - Sensors (Light Sensor, Temperature sensor)
 - Servo (neck microservo)
-- Speaker (4ohm speaker wired with max98357A amplifier)
+- Amplifier (8ohm speaker wired with built-in amplifier)
 
 
 ## Actions
@@ -49,28 +50,18 @@ The light sensor was included because some previous birds had no ability to set 
 
 ## Wiring Connections
 
-### 1. Servo (EASIEST - No wiring!)
+### 1. Servo
 ```
 Servo → Built-in 3-pin header on Feather
-- Red wire → V+ (5V power)
-- Black wire → G (Ground) 
-- Yellow/White wire → Signal pin
 ```
-**Just plug the servo directly into the header!**
-
 ### 2. Speaker (EASY - Screw terminals)
 ```
 Speaker → Built-in amplifier terminals
-- Positive speaker wire → + terminal
-- Negative speaker wire → - terminal
 ```
 **Use the screw terminals - no soldering needed!**
 
 ### 3. LEDs (Eyes)
 ```
-LED Cathode (-) → A0 → 200Ω resistor → Breadboard
-LED Anode (+) → GND (Ground rail)
-
 For dual LEDs (both eyes):
 LED1 Cathode → A0 → 200Ω resistor → GND
 LED2 Cathode → A0 → 200Ω resistor → GND
@@ -138,17 +129,17 @@ external_power.value = True  # Enable servo and audio power
 ## Audio Files Setup
 
 1. Create an `audio/` folder on the CIRCUITPY drive
-2. Add WAV files (22.05kHz, 16-bit, mono recommended)
-3. Files will be played randomly during bird actions
+2. Add WAV files (11,000kHz, 16-bit, mono recommended)
+3. Files will be played randomly, or caws counted in Clock mode based on the configuration in `config.json`.
 
 Example audio folder:
 ```
 CIRCUITPY/
 ├── code.py
 ├── audio/
-│   ├── crow1.wav
-│   ├── crow2.wav
-│   └── hoot.wav
+│   ├── crow_single.wav
+│   ├── crow_double_.wav
+│   └── crow_quadruple.wav
 ```
 
 ## Troubleshooting
