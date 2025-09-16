@@ -7,6 +7,7 @@ import audiocore
 import audiomixer
 import array
 
+
 class Amplifier:
     """
     Amplifier and audio out for bird using CircuitPython I2S audio.
@@ -15,56 +16,56 @@ class Amplifier:
     - BCLK (Bit Clock/Serial Clock)  
     - DIN (Serial Data In)
     Can play test tone, or specific WAV files.
-    
+
     CircuitPython I2S is more flexible with sample rates than MicroPython.
-    
+
     For Propmaker Feather, use:
     - board.I2S_BIT_CLOCK for bit_clk
     - board.I2S_WORD_SELECT for leftright
     - board.I2S_DATA for data_in
     """
+
     def __init__(self, leftright, bit_clk, data_in, audio_dir="", sample_rate=11000, bits=16):
         self.sample_rate = sample_rate
         self.bits = bits
         self.audio_dir = audio_dir
-        
+
         # Initialize I2S audio output
         self.audio = audiobusio.I2SOut(bit_clk, leftright, data_in)
-        
+
         # Initialize mixer for better audio handling
         self.mixer = audiomixer.Mixer(
-            voice_count=1, 
-            sample_rate=self.sample_rate, 
+            voice_count=1,
+            sample_rate=self.sample_rate,
             channel_count=1,
-            bits_per_sample=self.bits, 
+            bits_per_sample=self.bits,
             samples_signed=True,
             buffer_size=4096
         )
-        
+
         # Start audio output
         self.audio.play(self.mixer)
 
     def make_tone(self, frequency=440, duration=1.0, volume=0.5):
-        """Generate a sine wave tone with lower sample rate to save memory"""
-        # Use lower sample rate for tones to reduce memory usage
-        tone_sample_rate = 8000  # Reduced from 22050 to save memory
-        length = int(tone_sample_rate * duration)
+        """Generate a sine wave tone using the configured sample rate"""
+        # FIXED: Use configured sample rate instead of hardcoded value
+        length = int(self.sample_rate * duration)
         sine_wave = array.array("h", [0] * length)
-        
+
         volume_factor = int(volume * (2 ** 15 - 1))
-        
+
         for i in range(length):
             sine_wave[i] = int(
-                math.sin(2 * math.pi * frequency * i / tone_sample_rate) * volume_factor
+                math.sin(2 * math.pi * frequency * i / self.sample_rate) * volume_factor
             )
-        
-        return audiocore.RawSample(sine_wave, sample_rate=tone_sample_rate)
+
+        return audiocore.RawSample(sine_wave, sample_rate=self.sample_rate)
 
     def play_tone(self, frequency=440, duration=1.0, volume=0.5):
         """Play a tone of specified frequency and duration"""
         tone = self.make_tone(frequency, duration, volume)
         self.mixer.voice[0].play(tone)
-        
+
         # Wait for tone to finish
         while self.mixer.voice[0].playing:
             time.sleep(0.1)
@@ -75,25 +76,25 @@ class Amplifier:
         """
         if filename is None:
             filename = self.random_wav()
-        
+
         if not filename.startswith('/') and self.audio_dir:
             filename = f"/{self.audio_dir}/{filename}"
-        
+
         try:
             with open(filename, "rb") as wav_file:
                 wave = audiocore.WaveFile(wav_file)
-                
+
                 # Set volume if given
                 if not volume is None:
                     self.mixer.voice[0].level = volume
-                
+
                 # Play the file
                 self.mixer.voice[0].play(wave)
-                
+
                 # Wait for playback to complete
                 while self.mixer.voice[0].playing:
                     time.sleep(0.1)
-                    
+
         except Exception as e:
             print(f"Error playing {filename}: {e}")
 
@@ -101,7 +102,7 @@ class Amplifier:
         """Select a random WAV file from the audio directory"""
         wavs = []
         audio_path = f'/{self.audio_dir}' if self.audio_dir else '/'
-        
+
         try:
             for filename in os.listdir(audio_path):
                 if filename.lower().endswith('.wav') and not filename.startswith('.'):
@@ -109,11 +110,11 @@ class Amplifier:
         except OSError:
             print(f"Could not list directory: {audio_path}")
             return None
-            
+
         if not wavs:
             print(f"No WAV files found in {audio_path}")
             return None
-            
+
         selected = random.choice(wavs)
         return f"{audio_path}/{selected}" if audio_path != '/' else selected
 
@@ -147,30 +148,31 @@ class Amplifier:
 def play_file(filename, audio_dir=""):
     """Play a single WAV file using temporary Amplifier instance"""
     import board
-    
+
     # Use default I2S pins for Propmaker Feather
     amp = Amplifier(
         board.I2S_WORD_SELECT,
-        board.I2S_BIT_CLOCK, 
+        board.I2S_BIT_CLOCK,
         board.I2S_DATA,
         audio_dir=audio_dir
     )
-    
+
     try:
         amp.play_wav(filename)
     finally:
         amp.deinit()
 
+
 def play_tone_simple(frequency=440, duration=1.0):
     """Play a simple tone using temporary Amplifier instance"""
     import board
-    
+
     amp = Amplifier(
         board.I2S_WORD_SELECT,
         board.I2S_BIT_CLOCK,
         board.I2S_DATA
     )
-    
+
     try:
         amp.play_tone(frequency, duration)
     finally:

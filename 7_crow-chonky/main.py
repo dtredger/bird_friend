@@ -311,6 +311,6 @@ def schedule_next_action(mode, crow, config):
     else:
         print("⚠️ Mode doesn't support timer scheduling")
 
-#
-# if __name__ == "__main__":
-#     main()
+
+if __name__ == "__main__":
+    main()

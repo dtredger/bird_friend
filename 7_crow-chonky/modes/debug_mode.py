@@ -13,7 +13,7 @@ Inherits from BaseMode:
 """
 
 import time
-from base_mode import BaseMode
+from modes.base_mode import BaseMode
 
 
 class DebugMode(BaseMode):
@@ -111,7 +111,7 @@ class DebugMode(BaseMode):
     def test_audio(self, crow, config):
         """Quick audio test"""
         print("  Testing audio...")
-        crow.amplifier.play_tone(frequency=440, duration=0.3, volume=0.3)
+        crow.amplifier.play_tone()
 
     def test_full_action(self, crow, config):
         """Test the inherited default action"""
