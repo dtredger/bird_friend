@@ -1,9 +1,9 @@
 """
-Clock Mode - Hourly Chime with Alarm Scheduling
-===============================================
+Clock Mode - Intelligent Chiming with Caw Counting
+==================================================
 
-This is the corrected version that uses the fixed BaseMode.
-All syntax errors have been fixed and it's ready to use.
+Intelligently selects sound files based on their configured caw counts
+to achieve the exact number of chimes needed for each hour.
 """
 
 import time
@@ -34,17 +34,58 @@ class ClockMode(BaseMode):
         test_mode = config.get("debug", False)
         self.chime_interval = 30 if test_mode else (chime_interval_minutes * 60)
 
+        # Configure intelligent audio chiming
+        self.setup_intelligent_audio(crow, config)
+
         # Flash LEDs to show current hour using alarms
         self.schedule_hour_confirmation(crow, self.current_hour)
 
-        print(f"✅ Clock mode ready with ALARMS - hour set to {self.current_hour}")
+        print(f"✅ Clock mode ready with INTELLIGENT CHIMING - hour set to {self.current_hour}")
+
+    def setup_intelligent_audio(self, crow, config):
+        """Configure the amplifier with sound file caw counts"""
+        audio_config = config.get("audio", {})
+        sound_files = audio_config.get("sound_files", {})
+        chime_strategy = audio_config.get("chime_strategy", "intelligent")
+        fallback_behavior = audio_config.get("fallback_behavior", "repeat_single")
+
+        if sound_files:
+            print(f"🎵 Configuring intelligent chiming with {len(sound_files)} sound files:")
+
+            # Verify files exist and show configuration
+            existing_files = {}
+            missing_files = []
+
+            for filename, caw_count in sound_files.items():
+                full_path = f"/{audio_config.get('directory', 'audio')}/{filename}"
+                try:
+                    with open(full_path, 'rb'):
+                        existing_files[filename] = caw_count
+                        print(f"   ✅ {filename}: {caw_count} caws")
+                except:
+                    missing_files.append(filename)
+                    print(f"   ❌ {filename}: NOT FOUND")
+
+            if missing_files:
+                print(f"⚠️ {len(missing_files)} configured files not found - will use fallback behavior")
+
+            # Configure the amplifier
+            crow.amplifier.set_sound_files(
+                existing_files,
+                chime_strategy=chime_strategy,
+                fallback_behavior=fallback_behavior
+            )
+
+            print(f"🎯 Chiming strategy: {chime_strategy}")
+            print(f"🔄 Fallback behavior: {fallback_behavior}")
+
+        else:
+            print("⚠️ No sound files configured - using random selection")
+            crow.amplifier.set_sound_files({})
 
     def run(self, crow, config):
-        """
-        Override the default run method for clock-specific behavior.
-        Uses alarm scheduling for chimes instead of standard timed actions.
-        """
-        print(f"🕐 Starting clock mode with ALARM-SCHEDULED chimes")
+        """Override the default run method for clock-specific behavior."""
+        print(f"🕐 Starting clock mode")
 
         # Initialize if not already done
         if not self.is_running:
@@ -57,6 +98,10 @@ class ClockMode(BaseMode):
 
         # Display startup info
         self.show_mode_info(crow, config)
+
+        # Initialize timing variables
+        self.last_update_time = time.monotonic()
+        self.last_status_time = time.monotonic()
 
         # Clock-specific main loop
         try:
@@ -92,8 +137,6 @@ class ClockMode(BaseMode):
                 # Update timing
                 self.last_update_time = current_time
 
-                # NO SLEEP - maximum responsiveness for button presses!
-
         except KeyboardInterrupt:
             print(f"\n🛑 Clock mode interrupted")
         except Exception as e:
@@ -110,7 +153,6 @@ class ClockMode(BaseMode):
 
     def mode_update(self, crow, config):
         """Override to provide clock-specific status updates"""
-        # Process scheduled actions (handled automatically by BaseMode)
         current_time = time.monotonic()
 
         # Status update every 10 seconds for clock mode
@@ -118,12 +160,19 @@ class ClockMode(BaseMode):
             time_since_last_chime = current_time - self.last_chime_time
             time_until_chime = self.chime_interval - time_since_last_chime
             scheduled_count = len(self.scheduled_actions)
-            print(f"🕐 Hour: {self.current_hour}, Next chime: {time_until_chime:.0f}s, Scheduled actions: {scheduled_count}")
 
-        return True  # Continue running
+            # Show sound file info occasionally
+            if int(current_time) % 30 == 0:
+                info = crow.amplifier.get_sound_file_info()
+                if isinstance(info, dict):
+                    print(f"🎵 Sound files: {info['total_files']} files, strategy: {info['strategy']}")
+
+            print(f"🕐 Hour: {self.current_hour}, Next chime: {time_until_chime:.0f}s, Scheduled: {scheduled_count}")
+
+        return True
 
     def on_button_press(self, crow, config):
-        """Override to handle hour advancement with alarm-scheduled confirmation"""
+        """Override to handle hour advancement with intelligent chiming demo"""
         self.current_hour += 1
         if self.current_hour > 12:
             self.current_hour = 1
@@ -133,62 +182,52 @@ class ClockMode(BaseMode):
         # Schedule confirmation flashes using alarms
         self.schedule_hour_confirmation(crow, self.current_hour)
 
-        # Optional: Also chime the new hour immediately
-        immediate_chime = config.get("clock_button_immediate_chime", False)
-        if immediate_chime:
-            print("🔔 Scheduling immediate chime...")
-            # Schedule chime after confirmation flashes complete
-            flash_duration = self.current_hour * 0.5 + 0.5
-            self.schedule_action(flash_duration,
-                lambda: self.perform_hourly_chime(crow, config),
-                "immediate_chime")
-
     def schedule_hour_confirmation(self, crow, hour):
         """Schedule hour confirmation flashes using alarm system"""
         print(f"💡 Scheduling {hour} confirmation flashes")
 
         for i in range(hour):
-            # Schedule each flash on/off pair
             flash_delay = i * 0.5
 
-            # Flash on
             self.schedule_action(flash_delay,
                 lambda: crow.leds.set_brightness(0.6),
                 f"flash_{i+1}_on")
 
-            # Flash off
             self.schedule_action(flash_delay + 0.25,
                 lambda: crow.leds.turn_off(),
                 f"flash_{i+1}_off")
 
-        print(f"⏰ Scheduled {hour} confirmation flashes with precise alarm timing")
+        print(f"⏰ Scheduled {hour} confirmation flashes")
 
     def show_mode_info(self, crow, config):
         """Override to show clock-specific startup information"""
-        test_mode = config.get("debug", False)
-
-        if test_mode:
-            print(f"🧪 DEBUG MODE: ALARM-scheduled chiming every {self.chime_interval} seconds")
-        else:
-            chime_minutes = self.chime_interval // 60
-            print(f"🕐 ALARM-scheduled chiming every {chime_minutes} minutes")
-
+        chime_minutes = self.chime_interval // 60
+        print(f"🕐 Intelligent chiming every {chime_minutes} minutes")
         print(f"Current hour setting: {self.current_hour}")
-        print("ALARM-ENHANCED Button controls:")
-        print("  Short press: Advance hour (with scheduled confirmation)")
+
+        # Show audio configuration
+        info = crow.amplifier.get_sound_file_info()
+        if isinstance(info, dict) and info['total_files'] > 0:
+            print(f"🎵 {info['total_files']} sound files configured ({info['strategy']} strategy)")
+            max_caws = info['max_single_file_caws']
+            print(f"   Max caws per file: {max_caws}, Total possible: {info['total_possible_caws']}")
+        else:
+            print("🎵 Using random sound file selection")
+
+        print("Button controls:")
+        print("  Short press: Advance hour")
         print("  Long press: Cycle modes")
-        print("  All timing: Non-blocking alarm-based")
         print("=" * 50)
 
     def perform_hourly_chime(self, crow, config):
-        """Perform the hourly chime sequence using alarm scheduling"""
+        """Perform hourly chime using sound selection"""
         if self.chime_in_progress:
             print("⚠️ Chime sequence already in progress")
             return
 
         self.chime_in_progress = True
         hour = self.current_hour
-        print(f"🕐 Starting ALARM-SCHEDULED chime for hour {hour}")
+        print(f"🕐 Starting chime for hour {hour}")
 
         # Check conditions first
         light_sufficient, condition = crow.check_conditions()
@@ -201,63 +240,104 @@ class ClockMode(BaseMode):
             return
 
         if not light_sufficient:
-            print("🌙 Too dark - scheduling quiet chime")
-            self.schedule_quiet_chime(crow, config, hour)
+            print("🌙 Too dark - scheduling quiet intelligent chime")
+            self.schedule_quiet_intelligent_chime(crow, config, hour)
             return
 
-        # Full chime sequence with precise alarm timing
-        print("🎭 Scheduling full chime sequence with PRECISE timing")
+        # Full intelligent chime sequence
+        print("🎭 Scheduling full intelligent chime sequence")
         crow.amplifier.set_volume(chime_volume)
         crow.leds.fade_in()
 
-        # Schedule each chime with precise timing
-        for i in range(hour):
-            chime_delay = i * 0.8  # 0.8 seconds between chimes
+        # Get chime spacing from config
+        chime_spacing = config.get("clock", {}).get("chime_spacing_seconds", 0.8)
 
-            # Alternate servo positions for visual variety
+        # Schedule servo movements for visual effect
+        for i in range(min(hour, 6)):  # Limit servo movements to avoid excessive motion
+            movement_delay = i * chime_spacing
+
             if i % 2 == 0:
-                self.schedule_action(chime_delay,
+                self.schedule_action(movement_delay,
                     lambda: crow.servo.to_top(),
-                    f"chime_{i+1}_top")
+                    f"movement_{i+1}_top")
             else:
-                self.schedule_action(chime_delay,
+                self.schedule_action(movement_delay,
                     lambda: crow.servo.to_bottom(),
-                    f"chime_{i+1}_bottom")
+                    f"movement_{i+1}_bottom")
 
-            # Schedule sound slightly after servo movement
-            self.schedule_action(chime_delay + 0.1,
-                lambda: crow.amplifier.play_wav(),
-                f"chime_{i+1}_sound")
+        # Schedule the intelligent chiming
+        self.schedule_action(0.2,
+            lambda: self.play_intelligent_chime_sequence(crow, config, hour),
+            "intelligent_chime_sequence")
 
-        # Schedule cleanup after all chimes complete
-        cleanup_delay = hour * 0.8 + 0.5
+        # Schedule cleanup after estimated completion time
+        # Estimate based on number of files that might be played
+        estimated_duration = self.estimate_chime_duration(crow, hour, chime_spacing)
+        cleanup_delay = estimated_duration + 1.0
+
         self.schedule_action(cleanup_delay,
-            lambda: self.finish_chime_sequence(crow, config),
+            lambda: self.finish_intelligent_chime(crow, config),
             "chime_cleanup")
 
-        print(f"🔔 Scheduled {hour} chimes with PRECISE ALARM TIMING!")
+        print(f"🔔 Scheduled intelligent chime for {hour} caws!")
 
-    def schedule_quiet_chime(self, crow, config, hour):
-        """Schedule quiet chimes for dark conditions using alarms"""
-        print(f"🌙 Scheduling {hour} quiet chimes")
+    def play_intelligent_chime_sequence(self, crow, config, hour):
+        """Play the intelligent chime sequence"""
+        print(f"🎵 Playing intelligent chime sequence for {hour} caws...")
 
-        for i in range(hour):
-            delay = i * 0.5  # Faster quiet chimes
-            self.schedule_action(delay,
-                lambda: crow.amplifier.play_wav(),
-                f"quiet_chime_{i+1}")
+        try:
+            played_files = crow.amplifier.play_chime_sequence(hour)
 
-        # Schedule cleanup
-        cleanup_delay = hour * 0.5 + 0.3
+            # Log what was played for debugging
+            file_names = [f.split('/')[-1] for f in played_files]
+            print(f"🎶 Intelligent chime complete - played: {file_names}")
+
+        except Exception as e:
+            print(f"💥 Error in intelligent chiming: {e}")
+            # Fallback to simple chiming
+            crow.amplifier.play_wav()
+
+    def estimate_chime_duration(self, crow, hour, spacing):
+        """Estimate how long the chime sequence will take"""
+        info = crow.amplifier.get_sound_file_info()
+
+        if isinstance(info, dict) and info['total_files'] > 0:
+            # Estimate based on typical file count for this hour
+            estimated_files = min(hour, 4)  # Most efficient packing
+            estimated_duration = estimated_files * 2.0  # ~2 seconds per file
+        else:
+            # Random file mode - assume one file per caw
+            estimated_duration = hour * 2.0
+
+        return max(estimated_duration, hour * 0.5)  # Minimum reasonable duration
+
+    def schedule_quiet_intelligent_chime(self, crow, config, hour):
+        """Schedule quiet chimes for dark conditions"""
+        print(f"🌙 Scheduling {hour} quiet intelligent chimes")
+
+        # Quiet chime - just audio, no servo movement or LEDs
+        self.schedule_action(0.1,
+            lambda: self.play_quiet_intelligent_chime(crow, config, hour),
+            "quiet_intelligent_chime")
+
+        # Quick cleanup
+        cleanup_delay = self.estimate_chime_duration(crow, hour, 0.5) + 0.5
         self.schedule_action(cleanup_delay,
             lambda: self.finish_quiet_chimes(crow, config),
             "quiet_cleanup")
 
-        print(f"⏰ Scheduled {hour} quiet chimes")
+    def play_quiet_intelligent_chime(self, crow, config, hour):
+        """Play quiet intelligent chime"""
+        quiet_volume = config.get("clock", {}).get("chime_volume", 0.7) * 0.5
+        crow.amplifier.set_volume(quiet_volume)
 
-    def finish_chime_sequence(self, crow, config):
-        """Scheduled cleanup after full chime sequence"""
-        print("🧹 Finishing chime sequence...")
+        played_files = crow.amplifier.play_chime_sequence(hour)
+        file_names = [f.split('/')[-1] for f in played_files]
+        print(f"🌙 Quiet intelligent chime complete: {file_names}")
+
+    def finish_intelligent_chime(self, crow, config):
+        """Scheduled cleanup after intelligent chime sequence"""
+        print("🧹 Finishing intelligent chime sequence...")
         crow.servo.to_midpoint()
         crow.leds.fade_out()
 
@@ -265,15 +345,11 @@ class ClockMode(BaseMode):
         crow.amplifier.set_volume(config["audio"]["volume"])
         self.chime_in_progress = False
 
-        print(f"✅ ALARM-SCHEDULED chime sequence complete!")
+        print(f"✅ Intelligent chime sequence complete!")
 
     def finish_quiet_chimes(self, crow, config):
         """Scheduled cleanup after quiet chimes"""
-        print("🧹 Finishing quiet chimes...")
+        print("🧹 Finishing quiet intelligent chimes...")
+        crow.amplifier.set_volume(config["audio"]["volume"])
         self.chime_in_progress = False
-        print(f"✅ Quiet chimes complete!")
-
-    # Keep the old flash_hour_confirmation method for compatibility
-    def flash_hour_confirmation(self, crow, hour):
-        """Compatibility method - now uses alarm scheduling"""
-        self.schedule_hour_confirmation(crow, hour)
+        print(f"✅ Quiet intelligent chimes complete!")

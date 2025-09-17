@@ -3,7 +3,6 @@ Crow Bird Main - Timer-Based Architecture
 =========================================
 
 Main entry point with true timer-based scheduling.
-No polling, no busy loops - just responsive event handling.
 """
 
 import board
@@ -29,6 +28,7 @@ class CrowBird:
         self.config = config
         self.setup_power()
         self.setup_components()
+        self.setup_intelligent_audio()
         print("🐦 Crow Bird initialized with timer-based architecture")
 
     def setup_power(self):
@@ -85,6 +85,59 @@ class CrowBird:
         self.setup_global_button()
 
         print("🎉 All components initialized!")
+
+    def setup_intelligent_audio(self):
+        """Configure intelligent audio system with caw counting"""
+        audio_config = self.config.get("audio", {})
+        sound_files = audio_config.get("sound_files", {})
+
+        if sound_files:
+            print("🎵 Setting up intelligent audio system...")
+
+            chime_strategy = audio_config.get("chime_strategy", "intelligent")
+            fallback_behavior = audio_config.get("fallback_behavior", "repeat_single")
+
+            # Validate and report on sound files
+            existing_files = {}
+            missing_files = []
+            total_caws = 0
+
+            for filename, caw_count in sound_files.items():
+                full_path = f"/{audio_config.get('directory', 'audio')}/{filename}"
+                try:
+                    with open(full_path, 'rb'):
+                        existing_files[filename] = caw_count
+                        total_caws += caw_count
+                        print(f"   ✅ {filename}: {caw_count} caws")
+                except:
+                    missing_files.append(filename)
+                    print(f"   ❌ {filename}: NOT FOUND")
+
+            if existing_files:
+                self.amplifier.set_sound_files(
+                    existing_files,
+                    chime_strategy=chime_strategy,
+                    fallback_behavior=fallback_behavior
+                )
+
+                max_caws = max(existing_files.values()) if existing_files else 0
+                print(f"🎯 Intelligent audio configured:")
+                print(f"   {len(existing_files)} files, {total_caws} total caws")
+                print(f"   Max single file: {max_caws} caws")
+                print(f"   Strategy: {chime_strategy}")
+                print(f"   Fallback: {fallback_behavior}")
+
+                if missing_files:
+                    print(f"⚠️ {len(missing_files)} configured files missing:")
+                    for filename in missing_files:
+                        print(f"   - {filename}")
+
+            else:
+                print("⚠️ No valid sound files found - using random selection")
+                self.amplifier.set_sound_files({})
+        else:
+            print("⚠️ No sound files configured - using random selection")
+            self.amplifier.set_sound_files({})
 
     def setup_global_button(self):
         """Setup global button for mode switching ONLY"""
@@ -189,20 +242,30 @@ def load_config():
             "audio": {
                 "directory": "audio",
                 "sample_rate": 11000,
-                "volume": 0.6
+                "volume": 0.6,
+                "sound_files": {
+                    "crow_single.wav": 1,
+                    "crow_double.wav": 2
+                },
+                "chime_strategy": "intelligent",
+                "fallback_behavior": "repeat_single"
             },
             "sensors": {"light_threshold": 1000},
             "leds": {"max_brightness": 0.8},
             "servo": {"speed": 0.02, "pause": 0.5},
+            "clock": {
+                "chime_volume": 0.7,
+                "chime_spacing_seconds": 0.8
+            },
             "behavior": {"night_flash_count": 2}
         }
 
 
 def main():
     """
-    Timer-based main entry point - no polling!
+    Timer-based main entry point
     """
-    print("🐦 Crow Bird - TIMER-BASED Architecture! 🐦")
+    print("🐦 Crow Bird 🐦")
     print("=" * 60)
 
     # Load configuration
@@ -224,14 +287,14 @@ def main():
                 mode_info = mode_manager.get_mode_info()
                 print(f"✅ Switched to: {mode_info['current_mode']}")
 
-                # Re-initialize the new mode with timer scheduling
+                # Re-initialize the new mode
                 current_mode = mode_manager.current_mode_instance
                 if current_mode:
                     current_mode.init(crow, config)
                     schedule_next_action(current_mode, crow, config)
 
             crow.button.on_long_press = on_mode_switch
-            print("🎮 Timer-based button control ready")
+            print("🎮 Button control ready")
         else:
             print("⚠️ No button - mode switching disabled")
 
