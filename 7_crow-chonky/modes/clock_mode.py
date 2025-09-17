@@ -193,8 +193,3 @@ class ClockMode(BaseMode):
         print("🧹 Finishing quiet chimes...")
         self.chime_in_progress = False
         print(f"✅ Quiet chimes complete!")
-
-    # Keep the old flash_hour_confirmation method for compatibility
-    def flash_hour_confirmation(self, crow, hour):
-        """Compatibility method - now uses alarm scheduling"""
-        self.schedule_hour_confirmation(crow, hour)
