@@ -2,8 +2,8 @@
   "_comment": "Configuration file for Prop-Maker Feather Crow Bird",
   "_description": "Modify these settings to customize your bird's behavior. Save and reset board for changes to take effect.",
   
-  "debug": false,
-  "interval_minutes": 60,
+  "debug": true,
+  "interval_minutes": 10,
   "use_deep_sleep": false,
 
   "available_modes": [
