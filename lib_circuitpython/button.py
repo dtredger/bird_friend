@@ -31,21 +31,12 @@ import digitalio
 class Button:
     """
     Debounced button with callback support and multiple press detection.
-    
-    Features:
-    - Debouncing to prevent false triggers
-    - Single press, long press, and double press detection
-    - Configurable timing parameters
-    - Callback functions for different press types
-    - Pull-up or pull-down resistor configuration
     """
-    
+
     def __init__(self, pin, on_press=None, on_long_press=None, on_double_press=None,
-                 pull=digitalio.Pull.UP, debounce_ms=50, long_press_ms=1000, 
+                 pull=digitalio.Pull.UP, debounce_ms=50, long_press_ms=1000,
                  double_press_window_ms=500):
         """
-        Initialize button with callbacks and timing parameters.
-        
         Args:
             pin: CircuitPython pin object (e.g., board.D6)
             on_press: Callback function for single press (optional)
@@ -59,32 +50,38 @@ class Button:
         self.pin_obj = digitalio.DigitalInOut(pin)
         self.pin_obj.direction = digitalio.Direction.INPUT
         self.pin_obj.pull = pull
-        
+
         # Determine pressed state based on pull resistor
         self.pressed_state = False if pull == digitalio.Pull.UP else True
-        
+
         # Callback functions
         self.on_press = on_press
         self.on_long_press = on_long_press
         self.on_double_press = on_double_press
-        
+
         # Timing parameters (convert to seconds)
         self.debounce_time = debounce_ms / 1000.0
         self.long_press_time = long_press_ms / 1000.0
         self.double_press_window = double_press_window_ms / 1000.0
-        
-        # State tracking
-        self.last_state = not self.pressed_state
-        self.last_change_time = 0
+
+        # Initialize current time FIRST
+        current_time = time.monotonic()
+
+        # State tracking - initialize with current pin state
+        self.last_state = self.pin_obj.value == self.pressed_state
+        self.last_change_time = current_time
         self.press_start_time = 0
         self.last_press_time = 0
         self.press_count = 0
         self.long_press_triggered = False
-        
+
         # Statistics
         self.total_presses = 0
         self.total_long_presses = 0
         self.total_double_presses = 0
+
+        # Small stabilization delay to let pin settle
+        time.sleep(0.01)
 
     def update(self):
         """
