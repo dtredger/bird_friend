@@ -14,7 +14,7 @@ class ClockMode(BaseMode):
 
     def __init__(self):
         super().__init__()
-        self.current_hour = 12
+        self.current_hour = 6
         self.chime_in_progress = False
 
     def mode_init(self, crow, config):

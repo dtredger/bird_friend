@@ -265,7 +265,7 @@ def main():
     print("🐦 Crow Bird 🐦")
     print("=" * 60)
 
-    # Load configuration (no defaults here)
+    # Load configuration using lib/config.py
     config = load_config_file("config.json")
 
     try:
@@ -275,16 +275,98 @@ def main():
         # Create mode manager
         mode_manager = ModeManager(crow, config)
 
-        # Rest of main() unchanged...
+        # Set up global button for mode switching
+        if crow.button:
+            def on_mode_switch():
+                print("\n🔄 Mode switch requested...")
+                mode_manager.cycle_mode()
+                mode_info = mode_manager.get_mode_info()
+                print(f"✅ Switched to: {mode_info['current_mode']}")
+
+                # Re-initialize the new mode
+                current_mode = mode_manager.current_mode_instance
+                if current_mode:
+                    current_mode.init(crow, config)
+                    schedule_next_action(current_mode, crow, config)
+
+            crow.button.on_long_press = on_mode_switch
+            print("🎮 Button control ready")
+        else:
+            print("⚠️ No button - mode switching disabled")
+
+        # Initialize the starting mode
+        current_mode = mode_manager.current_mode_instance
+        if current_mode:
+            current_mode.init(crow, config)
+            print(f"🚀 Mode initialized: {mode_manager.current_mode_name}")
+
+        # Schedule the first action
+        schedule_next_action(current_mode, crow, config)
+
+        print("⏰ Timer-based scheduling active")
+        print("🎯 Main loop starting (Ctrl+C to exit)...")
+
+        # Main loop
+        while True:
+            # Handle button presses
+            if crow.button:
+                crow.button.update()
+
+            # Handle scheduled actions
+            current_mode = mode_manager.current_mode_instance
+            if current_mode and hasattr(current_mode, 'check_scheduled_actions'):
+                current_mode.check_scheduled_actions()
+
+            # Small sleep to allow keyboard interrupts
+            time.sleep(0.01)
 
     except KeyboardInterrupt:
         print("\n🛑 Keyboard interrupt received - exiting...")
     except Exception as e:
         print(f"💥 Fatal error: {e}")
+        try:
+            crow.leds.flash_eyes(times=10)
+        except:
+            pass
     finally:
         if 'crow' in locals():
             crow.cleanup()
         print("🐦 Crow bird shutdown complete.")
+
+
+def schedule_next_action(mode, crow, config):
+    """Schedule the next mode action using timer"""
+    if not mode:
+        return
+
+    interval_minutes = get_config_value(config, "interval_minutes", 60)
+    interval_seconds = interval_minutes * 60
+
+    def perform_scheduled_action():
+        print(f"\n⏰ Timer-triggered action in {mode.mode_name} mode")
+
+        try:
+            # Perform the mode's action
+            mode.check_conditions_and_act(crow, config)
+
+            # Schedule the next action
+            schedule_next_action(mode, crow, config)
+
+        except Exception as e:
+            print(f"💥 Error in scheduled action: {e}")
+            # Still schedule next action to keep going
+            schedule_next_action(mode, crow, config)
+
+    # Schedule using the mode's alarm system
+    if hasattr(mode, 'schedule_action'):
+        action_id = mode.schedule_action(
+            interval_seconds,
+            perform_scheduled_action,
+            f"next_mode_action"
+        )
+        print(f"⏰ Next action scheduled in {interval_minutes} minutes (ID: {action_id})")
+    else:
+        print("⚠️ Mode doesn't support timer scheduling")
 
 
 if __name__ == "__main__":
