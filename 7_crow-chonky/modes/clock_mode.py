@@ -65,8 +65,8 @@ class ClockMode(BaseMode):
             self.chime_in_progress = False
             return
 
-        # Set volume and start sequence
-        chime_volume = self.get_chime_volume_for_light_condition(config, light_condition)
+        # Set volume and start sequence (now uses smart fallback!)
+        chime_volume = self.get_volume_for_light_condition(config, light_condition)
         original_volume = get_config_value(config, "amplifier.volume", 0.6)
 
         print(f"🔊 Using {light_condition} volume: {chime_volume}")
@@ -115,21 +115,34 @@ class ClockMode(BaseMode):
             self.schedule_action(flash_delay, lambda: crow.leds.set_brightness(0.6), f"flash_{i+1}_on")
             self.schedule_action(flash_delay + 0.25, lambda: crow.leds.turn_off(), f"flash_{i+1}_off")
 
-    def get_chime_volume_for_light_condition(self, config, light_condition):
-        """Get appropriate chime volume for light condition"""
-        CLOCK_DEFAULTS = {"chime_volume": 0.7, "quiet_chime_volume": 0.35}
-        clock_config = config_section(config, "clock", CLOCK_DEFAULTS)
-        return clock_config["quiet_chime_volume"] if light_condition == "quiet" else clock_config["chime_volume"]
+    def get_volume_for_light_condition(self, config, light_condition):
+        """
+        Get appropriate volume for light condition.
+        Uses clock-specific volumes if configured, otherwise falls back to base amplifier volumes.
+
+        Smart Fallback Logic:
+        1. If config has clock.quiet_chime_volume AND clock.chime_volume → use clock volumes
+        2. Otherwise → use base class method (amplifier.quiet_volume / amplifier.volume)
+
+        This eliminates duplication while preserving clock-specific volume capability!
+        """
+        # Check if clock-specific volumes are configured
+        clock_quiet_volume = get_config_value(config, "clock.quiet_chime_volume", None)
+        clock_normal_volume = get_config_value(config, "clock.chime_volume", None)
+
+        # If clock volumes are configured, use them
+        if clock_quiet_volume is not None and clock_normal_volume is not None:
+            return clock_quiet_volume if light_condition == "quiet" else clock_normal_volume
+
+        # Otherwise, fall back to base amplifier volumes
+        return super().get_volume_for_light_condition(config, light_condition)
 
     def show_mode_info(self, crow, config):
-        """Display clock mode information"""
+        """Display clock mode information with smart volume source detection"""
         interval_minutes = get_config_value(config, "interval_minutes", 60)
 
         SENSOR_DEFAULTS = {"light_threshold": 1000, "quiet_light_threshold": 3000}
-        CLOCK_DEFAULTS = {"chime_volume": 0.7, "quiet_chime_volume": 0.35}
-
         sensor_config = config_section(config, "sensors", SENSOR_DEFAULTS)
-        clock_config = config_section(config, "clock", CLOCK_DEFAULTS)
 
         print(f"🕐 Light-based chiming every {interval_minutes} minutes")
         print(f"Current hour setting: {self.current_hour}")
@@ -141,10 +154,22 @@ class ClockMode(BaseMode):
         except:
             print("🎵 Audio: Basic configuration")
 
-        print("🔊 Light-based chime volumes:")
+        # Show volume configuration (clock-specific or fallback)
+        clock_quiet_vol = get_config_value(config, "clock.quiet_chime_volume", None)
+        clock_normal_vol = get_config_value(config, "clock.chime_volume", None)
+
+        if clock_quiet_vol is not None and clock_normal_vol is not None:
+            quiet_vol, normal_vol = clock_quiet_vol, clock_normal_vol
+            vol_type = "clock"
+        else:
+            quiet_vol = get_config_value(config, "amplifier.quiet_volume", 0.3)
+            normal_vol = get_config_value(config, "amplifier.volume", 0.6)
+            vol_type = "amplifier (fallback)"
+
+        print(f"🔊 Light-based chime volumes ({vol_type}):")
         print(f"   < {sensor_config['light_threshold']}: No sound (dark)")
-        print(f"   {sensor_config['light_threshold']}-{sensor_config['quiet_light_threshold']}: Quiet volume ({clock_config['quiet_chime_volume']})")
-        print(f"   >= {sensor_config['quiet_light_threshold']}: Full volume ({clock_config['chime_volume']})")
+        print(f"   {sensor_config['light_threshold']}-{sensor_config['quiet_light_threshold']}: Quiet volume ({quiet_vol})")
+        print(f"   >= {sensor_config['quiet_light_threshold']}: Full volume ({normal_vol})")
 
         print("Button controls:")
         print("  Short press: Advance hour (with confirmation)")

@@ -24,10 +24,5 @@
       "crow4_11000_16b.wav": 4
     },
     "chime_strategy": "intelligent"
-  },
-
-  "clock": {
-    "chime_volume": 0.7,
-    "quiet_chime_volume": 0.35
   }
 }
