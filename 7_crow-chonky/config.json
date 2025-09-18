@@ -11,8 +11,8 @@
   },
 
   "sensors": {
-    "light_threshold": 1000,
-    "quiet_light_threshold": 3000
+    "light_threshold": 500,
+    "quiet_light_threshold": 2000
   },
 
   "amplifier": {
