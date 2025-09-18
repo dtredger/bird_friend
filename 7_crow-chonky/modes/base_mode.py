@@ -4,6 +4,7 @@ BaseMode - Timer-Based Architecture
 """
 
 import time
+from config import get_config_value, config_section
 
 
 class BaseMode:
@@ -23,7 +24,7 @@ class BaseMode:
         self.scheduled_actions = []
         self.action_id = 0
 
-        # Timing intervals (for reference, not polling)
+        # Timing intervals
         self.action_interval = 3600  # 1 hour in seconds
         self.status_interval = 30    # 30 seconds
 
@@ -36,7 +37,7 @@ class BaseMode:
         self.start_time = time.monotonic()
 
         # Get timing from config
-        interval_minutes = config.get("interval_minutes", 60)
+        interval_minutes = get_config_value(config, "interval_minutes", 60)
         self.action_interval = interval_minutes * 60
 
         # Setup button handling
@@ -110,21 +111,47 @@ class BaseMode:
         """Check conditions and act"""
         print("=== Timer-triggered action ===")
 
-        light_sufficient, condition = crow.check_conditions()
+        light_condition, battery_ok = crow.check_conditions()
 
-        if condition == "critical_battery":
+        if not battery_ok:
             print("Critical battery")
             self.perform_battery_warning(crow, config)
-        elif light_sufficient:
-            print("Good conditions - full action")
-            self.perform_action(crow, config)
-        else:
+        elif light_condition == "dark":
             print("Too dark - night action")
             self.perform_night_action(crow, config)
+        else:
+            print(f"Light sufficient ({light_condition}) - full action")
+            self.perform_action(crow, config, light_condition)
 
-    def perform_action(self, crow, config):
-        """Main action using scheduled timing"""
-        print("Performing scheduled action sequence")
+    def get_volume_for_light_condition(self, config, light_condition):
+        """Get appropriate volume for light condition with defensive config access"""
+        if light_condition == "quiet":
+            return get_config_value(config, "amplifier.quiet_volume", 0.3)
+        else:  # normal light
+            return get_config_value(config, "amplifier.volume", 0.6)
+
+    def perform_action(self, crow, config, light_condition="normal"):
+        """Main action with service-defined volume defaults"""
+        print(f"Performing scheduled action sequence for {light_condition} light")
+
+        # Service defaults for amplifier volume
+        AMPLIFIER_DEFAULTS = {
+            "volume": 0.6,
+            "quiet_volume": 0.3
+        }
+        amp_config = config_section(config, "amplifier", AMPLIFIER_DEFAULTS)
+
+        # Set volume based on light condition
+        if light_condition == "quiet":
+            volume = amp_config["quiet_volume"]
+        else:
+            volume = amp_config["volume"]
+
+        original_volume = amp_config["volume"]
+
+        if volume != original_volume:
+            print(f"🔊 Adjusting volume: {original_volume} → {volume} for {light_condition} light")
+            crow.amplifier.set_volume(volume)
 
         # Immediate actions
         crow.leds.fade_in()
@@ -139,19 +166,24 @@ class BaseMode:
         def move_center():
             crow.servo.to_midpoint()
 
-        def fade_out():
+        def fade_out_and_restore():
             crow.leds.fade_out()
+            # Restore original volume
+            crow.amplifier.set_volume(original_volume)
 
         # Schedule future actions
         self.schedule_action(0.5, move_bottom, "move_bottom")
         self.schedule_action(1.0, move_center, "move_center")
-        self.schedule_action(1.5, fade_out, "fade_out")
+        self.schedule_action(1.5, fade_out_and_restore, "fade_out_and_restore")
 
         print("Action sequence scheduled")
 
     def perform_night_action(self, crow, config):
-        """Night action"""
-        night_flashes = config.get("behavior", {}).get("night_flash_count", 2)
+        """Night action with service defaults"""
+        BEHAVIOR_DEFAULTS = {"night_flash_count": 2}
+        behavior_config = config_section(config, "behavior", BEHAVIOR_DEFAULTS)
+
+        night_flashes = behavior_config["night_flash_count"]
         print("Night action - flashing " + str(night_flashes) + " times")
         crow.leds.flash_eyes(times=night_flashes)
 
@@ -170,11 +202,16 @@ class BaseMode:
         if cancelled > 0:
             print("Cancelled " + str(cancelled) + " scheduled actions")
 
-        # Standard cleanup
+        # Standard cleanup with service defaults
         try:
             crow.leds.turn_off()
             crow.amplifier.stop()
             crow.servo.to_midpoint()
+
+            # Restore normal volume using service defaults
+            AMPLIFIER_DEFAULTS = {"volume": 0.6}
+            amp_config = config_section(config, "amplifier", AMPLIFIER_DEFAULTS)
+            crow.amplifier.set_volume(amp_config["volume"])
         except Exception as e:
             print("Cleanup error: " + str(e))
 
@@ -191,10 +228,29 @@ class BaseMode:
         self.check_conditions_and_act(crow, config)
 
     def show_mode_info(self, crow, config):
-        """Override for mode-specific info"""
+        """Override for mode-specific info with service defaults"""
         interval_minutes = self.action_interval // 60
+
+        # Service defaults for display
+        SENSOR_DEFAULTS = {
+            "light_threshold": 1000,
+            "quiet_light_threshold": 3000
+        }
+        AMPLIFIER_DEFAULTS = {
+            "volume": 0.6,
+            "quiet_volume": 0.3
+        }
+
+        sensor_config = config_section(config, "sensors", SENSOR_DEFAULTS)
+        amp_config = config_section(config, "amplifier", AMPLIFIER_DEFAULTS)
+
         print("=== " + self.mode_name + " Mode ===")
         print("Timer interval: " + str(interval_minutes) + " minutes")
+        print("Light-based volume control:")
+        print(f"  < {sensor_config['light_threshold']}: No sound (dark)")
+        print(
+            f"  {sensor_config['light_threshold']}-{sensor_config['quiet_light_threshold']}: Quiet volume ({amp_config['quiet_volume']})")
+        print(f"  >= {sensor_config['quiet_light_threshold']}: Full volume ({amp_config['volume']})")
         print("Alarm scheduling: ACTIVE")
         print("Button response: INSTANT")
         print("=" * 30)
