@@ -65,7 +65,8 @@ class CrowBird:
         self.light_sensor = LightSensor(light_pin)
         self.light_sensor.threshold = sensor_config["light_threshold"]
 
-        print(f"✅ Light sensor ready on {light_pin_name} (thresholds: {sensor_config['light_threshold']}/{sensor_config['quiet_light_threshold']})")
+        print(
+            f"✅ Light sensor ready on {light_pin_name} (thresholds: {sensor_config['light_threshold']}/{sensor_config['quiet_light_threshold']})")
 
         # Battery monitoring setup - service handles defaults
         BATTERY_DEFAULTS = {"enabled": False}
@@ -84,17 +85,21 @@ class CrowBird:
             self.battery = None
             print("⚠️ Battery monitoring disabled")
 
-        # Servo setup - service handles defaults
-        SERVO_DEFAULTS = {
-            "speed": 0.02,
-            "pause": 0.5
-        }
-        servo_config = config_section(self.config, "servo", SERVO_DEFAULTS)
+        servo_config = config_section(self.config, "servo")
 
-        self.servo = Servo(board.EXTERNAL_SERVO)
+        self.servo = Servo(
+            board.EXTERNAL_SERVO,
+            bottom_angle=servo_config["bottom_angle"],
+            top_angle=servo_config["top_angle"],
+            mid_angle=servo_config["mid_angle"]
+        )
         self.servo.sleep_interval = servo_config["speed"]
         self.servo.rotation_pause = servo_config["pause"]
-        print("✅ Servo ready")
+
+        # Display servo configuration
+        angle_info = self.servo.get_angle_info()
+        print(
+            f"✅ Servo ready: {angle_info['bottom_angle']}° to {angle_info['top_angle']}° (center: {angle_info['mid_angle']}°)")
 
         # Audio setup - service handles defaults
         AMPLIFIER_DEFAULTS = {

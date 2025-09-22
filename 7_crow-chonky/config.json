@@ -15,6 +15,14 @@
     "quiet_light_threshold": 2000
   },
 
+  "servo": {
+    "bottom_angle": 1,
+    "top_angle": 95,
+    "mid_angle": 80,
+    "speed": 0.02,
+    "pause": 0.5
+  },
+
   "amplifier": {
     "directory": "audio",
     "volume": 0.6,

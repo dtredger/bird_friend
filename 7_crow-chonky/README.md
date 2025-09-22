@@ -171,6 +171,15 @@ CIRCUITPY/
 - ✅ Try soft reset: Ctrl+C then Ctrl+D in serial console
 - ✅ Hard reset: Press reset button on board
 
+
+### Board wont mount
+- ✅ Hard reset: Delete all files
+
+```python
+import storage
+storage.erase_filesystem()
+```
+
 ## Testing Individual Components
 
 ### Test Servo
