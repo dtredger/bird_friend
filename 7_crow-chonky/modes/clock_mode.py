@@ -20,7 +20,6 @@ class ClockMode(BaseMode):
     def mode_init(self, crow, config):
         """Initialize clock mode"""
         print("🕐 Clock mode initializing...")
-        self.current_hour = 12
         self.chime_in_progress = False
         self.schedule_hour_confirmation(crow, self.current_hour)
         print(f"✅ Clock mode ready - hour set to {self.current_hour}")

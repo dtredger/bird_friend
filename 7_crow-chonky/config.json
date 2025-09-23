@@ -1,7 +1,7 @@
 {
   "mode": "clock",
-  "available_modes": ["default", "clock", "debug"],
-  "interval_minutes": 10,
+  "available_modes": ["default", "clock"],
+  "interval_minutes": 60,
   "debug": true,
 
   "pins": {
