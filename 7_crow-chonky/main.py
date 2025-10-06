@@ -5,7 +5,6 @@ Updated main.py - Uses lib/config.py and services handle their own defaults
 import board
 import time
 import digitalio
-import json
 
 # Import our config module
 from config import load_config_file, get_config_value, config_section
@@ -43,7 +42,7 @@ class CrowBird:
         """Initialize all hardware components - each handles its own defaults"""
         print("🔧 Setting up components...")
 
-        # LED setup - service handles defaults
+        # LED setup
         LED_DEFAULTS = {"max_brightness": 0.8}
         led_config = config_section(self.config, "leds", LED_DEFAULTS)
         led_pin_name = get_config_value(self.config, "pins.led", "A0")
@@ -53,7 +52,7 @@ class CrowBird:
         self.leds.max_brightness = led_config["max_brightness"]
         print(f"✅ LEDs ready on {led_pin_name}")
 
-        # Light sensor setup - service handles defaults
+        # Light sensor setup
         SENSOR_DEFAULTS = {
             "light_threshold": 1000,
             "quiet_light_threshold": 3000
@@ -65,10 +64,9 @@ class CrowBird:
         self.light_sensor = LightSensor(light_pin)
         self.light_sensor.threshold = sensor_config["light_threshold"]
 
-        print(
-            f"✅ Light sensor ready on {light_pin_name} (thresholds: {sensor_config['light_threshold']}/{sensor_config['quiet_light_threshold']})")
+        print(f"✅ Light sensor ready on {light_pin_name}")
 
-        # Battery monitoring setup - service handles defaults
+        # Battery monitoring setup
         BATTERY_DEFAULTS = {"enabled": False}
         battery_config = config_section(self.config, "battery", BATTERY_DEFAULTS)
 
@@ -85,8 +83,8 @@ class CrowBird:
             self.battery = None
             print("⚠️ Battery monitoring disabled")
 
+        # Servo setup
         servo_config = config_section(self.config, "servo")
-
         self.servo = Servo(
             board.EXTERNAL_SERVO,
             bottom_angle=servo_config["bottom_angle"],
@@ -96,12 +94,10 @@ class CrowBird:
         self.servo.sleep_interval = servo_config["speed"]
         self.servo.rotation_pause = servo_config["pause"]
 
-        # Display servo configuration
         angle_info = self.servo.get_angle_info()
-        print(
-            f"✅ Servo ready: {angle_info['bottom_angle']}° to {angle_info['top_angle']}° (center: {angle_info['mid_angle']}°)")
+        print(f"✅ Servo ready: {angle_info['bottom_angle']}° to {angle_info['top_angle']}°")
 
-        # Audio setup - service handles defaults
+        # Audio setup
         AMPLIFIER_DEFAULTS = {
             "directory": "audio",
             "sample_rate": 11000,
@@ -119,13 +115,13 @@ class CrowBird:
         self.amplifier.set_volume(amp_config["volume"])
         print("✅ Audio ready")
 
-        # Global button setup - service handles defaults
+        # Global button setup
         self.setup_global_button()
 
         print("🎉 All components initialized!")
 
     def setup_global_button(self):
-        """Setup global button - service handles defaults"""
+        """Setup global button"""
         BUTTON_DEFAULTS = {
             "enabled": True,
             "long_press_ms": 1000,
@@ -156,7 +152,7 @@ class CrowBird:
             self.button = None
 
     def check_conditions(self):
-        """Check light and battery conditions - uses sensor service defaults"""
+        """Check light and battery conditions"""
         battery_ok = True
 
         # Check battery status
@@ -168,7 +164,7 @@ class CrowBird:
                 print("⚠️ CRITICAL BATTERY!")
                 battery_ok = False
 
-        # Check light level - get thresholds from sensor service
+        # Check light level
         light_reading = self.light_sensor.read()
         dark_threshold = get_config_value(self.config, "sensors.light_threshold", 1000)
         quiet_threshold = get_config_value(self.config, "sensors.quiet_light_threshold", 3000)
@@ -186,7 +182,7 @@ class CrowBird:
         return light_condition, battery_ok
 
     def setup_intelligent_audio(self):
-        """Configure intelligent audio - service handles defaults"""
+        """Configure intelligent audio"""
         AUDIO_DEFAULTS = {
             "sound_files": {},
             "chime_strategy": "intelligent",
@@ -199,7 +195,6 @@ class CrowBird:
         if sound_files:
             print("🎵 Setting up intelligent audio system...")
 
-            # Validate and report on sound files
             existing_files = {}
             missing_files = []
             total_caws = 0
@@ -224,13 +219,11 @@ class CrowBird:
 
                 print(f"🎯 Intelligent audio configured:")
                 print(f"   {len(existing_files)} files, {total_caws} total caws")
-                print(f"   Strategy: {audio_config['chime_strategy']}")
 
                 if missing_files:
                     print(f"⚠️ {len(missing_files)} configured files missing")
-
             else:
-                print("⚠️ No valid sound files found - using random selection")
+                print("⚠️ No valid sound files - using random selection")
                 self.amplifier.set_sound_files({})
         else:
             print("⚠️ No sound files configured - using random selection")
@@ -266,15 +259,15 @@ class CrowBird:
 
 
 def main():
-    """Main entry point with service-based defaults"""
+    """Main entry point"""
     print("🐦 Crow Bird 🐦")
     print("=" * 60)
 
-    # Load configuration using lib/config.py
+    # Load configuration
     config = load_config_file("config.json")
 
     try:
-        # Create and initialize bird hardware (services handle defaults)
+        # Create and initialize bird hardware
         crow = CrowBird(config)
 
         # Create mode manager
@@ -288,11 +281,11 @@ def main():
                 mode_info = mode_manager.get_mode_info()
                 print(f"✅ Switched to: {mode_info['current_mode']}")
 
-                # Re-initialize the new mode
+                # Re-initialize the new mode and schedule its first action
                 current_mode = mode_manager.current_mode_instance
                 if current_mode:
                     current_mode.init(crow, config)
-                    schedule_next_action(current_mode, crow, config)
+                    current_mode.schedule_next_mode_action()
 
             crow.button.on_long_press = on_mode_switch
             print("🎮 Button control ready")
@@ -305,8 +298,8 @@ def main():
             current_mode.init(crow, config)
             print(f"🚀 Mode initialized: {mode_manager.current_mode_name}")
 
-        # Schedule the first action
-        schedule_next_action(current_mode, crow, config)
+        # Schedule the first action using the mode's built-in scheduling
+        current_mode.schedule_next_mode_action()
 
         print("⏰ Timer-based scheduling active")
         print("🎯 Main loop starting (Ctrl+C to exit)...")
@@ -337,41 +330,6 @@ def main():
         if 'crow' in locals():
             crow.cleanup()
         print("🐦 Crow bird shutdown complete.")
-
-
-def schedule_next_action(mode, crow, config):
-    """Schedule the next mode action using timer"""
-    if not mode:
-        return
-
-    interval_minutes = get_config_value(config, "interval_minutes", 60)
-    interval_seconds = interval_minutes * 60
-
-    def perform_scheduled_action():
-        print(f"\n⏰ Timer-triggered action in {mode.mode_name} mode")
-
-        try:
-            # Perform the mode's action
-            mode.check_conditions_and_act(crow, config)
-
-            # Schedule the next action
-            schedule_next_action(mode, crow, config)
-
-        except Exception as e:
-            print(f"💥 Error in scheduled action: {e}")
-            # Still schedule next action to keep going
-            schedule_next_action(mode, crow, config)
-
-    # Schedule using the mode's alarm system
-    if hasattr(mode, 'schedule_action'):
-        action_id = mode.schedule_action(
-            interval_seconds,
-            perform_scheduled_action,
-            f"next_mode_action"
-        )
-        print(f"⏰ Next action scheduled in {interval_minutes} minutes (ID: {action_id})")
-    else:
-        print("⚠️ Mode doesn't support timer scheduling")
 
 
 if __name__ == "__main__":

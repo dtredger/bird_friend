@@ -28,6 +28,9 @@ class BaseMode:
         self.action_interval = 3600  # 1 hour in seconds
         self.status_interval = 30    # 30 seconds
 
+        # References (set during init)
+        self.crow = None
+        self.config = None
 
     def init(self, crow, config):
         """Initialize the mode"""
@@ -35,6 +38,10 @@ class BaseMode:
 
         self.is_running = False
         self.start_time = time.monotonic()
+
+        # Store references for scheduling
+        self.crow = crow
+        self.config = config
 
         # Get timing from config
         interval_minutes = get_config_value(config, "interval_minutes", 60)
@@ -89,6 +96,52 @@ class BaseMode:
         # Remove completed actions (in reverse order)
         for i in reversed(completed):
             self.scheduled_actions.pop(i)
+
+    def get_next_interval(self):
+        """
+        Get the interval for the next scheduled action.
+        Override this method in child classes to customize timing.
+
+        Returns:
+            float: Interval in seconds
+        """
+        return self.action_interval
+
+    def schedule_next_mode_action(self):
+        """
+        Schedule the next periodic mode action.
+        This method can be called from main.py or internally.
+        """
+        if not self.crow or not self.config:
+            print("⚠️ Cannot schedule - crow/config not initialized")
+            return
+
+        interval_seconds = self.get_next_interval()
+        interval_minutes = interval_seconds / 60
+
+        def perform_scheduled_action():
+            print(f"\n⏰ Timer-triggered action in {self.mode_name} mode")
+
+            try:
+                # Perform the mode's action
+                self.check_conditions_and_act(self.crow, self.config)
+
+                # Schedule the next action
+                self.schedule_next_mode_action()
+
+            except Exception as e:
+                print(f"💥 Error in scheduled action: {e}")
+                # Still schedule next action to keep going
+                self.schedule_next_mode_action()
+
+        # Schedule using the mode's alarm system
+        action_id = self.schedule_action(
+            interval_seconds,
+            perform_scheduled_action,
+            "next_mode_action"
+        )
+        print(f"⏰ Next action scheduled in {interval_minutes:.1f} minutes (ID: {action_id})")
+        return action_id
 
     def setup_button_handling(self, crow, config):
         """Set up button handling"""
@@ -216,6 +269,8 @@ class BaseMode:
             print("Cleanup error: " + str(e))
 
         self.is_running = False
+        self.crow = None
+        self.config = None
 
     # Methods to override in child classes
     def mode_init(self, crow, config):

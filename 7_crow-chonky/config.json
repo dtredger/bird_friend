@@ -1,6 +1,6 @@
 {
-  "mode": "clock",
-  "available_modes": ["default", "clock"],
+  "mode": "random",
+  "available_modes": ["default", "clock", "random"],
   "interval_minutes": 60,
   "debug": true,
 
@@ -25,12 +25,30 @@
 
   "amplifier": {
     "directory": "audio",
-    "volume": 0.6,
-    "quiet_volume": 0.3,
+    "volume": 0.75,
+    "quiet_volume": 0.4,
     "sound_files": {
       "crow_11000_16b.wav": 1,
       "crow4_11000_16b.wav": 4
     },
     "chime_strategy": "intelligent"
+  },
+
+  "random": {
+    "interval_variance": 0.25
+  },
+
+  "behavior": {
+    "night_flash_count": 2
+  },
+
+  "button": {
+    "enabled": true,
+    "long_press_ms": 1000,
+    "debounce_ms": 50
+  },
+
+  "battery": {
+    "enabled": false
   }
 }
