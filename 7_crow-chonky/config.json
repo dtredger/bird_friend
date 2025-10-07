@@ -2,7 +2,7 @@
   "mode": "random",
   "available_modes": ["default", "clock", "random"],
   "interval_minutes": 60,
-  "debug": true,
+  "debug": false,
 
   "pins": {
     "led": "A0",
@@ -25,7 +25,7 @@
 
   "amplifier": {
     "directory": "audio",
-    "volume": 0.75,
+    "volume": 0.8,
     "quiet_volume": 0.4,
     "sound_files": {
       "crow_11000_16b.wav": 1,

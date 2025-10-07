@@ -14,7 +14,7 @@ Configuration:
 
 import random
 from modes.base_mode import BaseMode
-from config import get_config_value
+from config import get_config_value, config_section
 
 
 class RandomMode(BaseMode):
@@ -38,7 +38,7 @@ class RandomMode(BaseMode):
 
         # Validate variance (must be between 0 and 1)
         if not (0 <= self.interval_variance <= 1):
-            print(f"⚠️ Invalid variance {self.interval_variance}, using 0.25")
+            print("⚠️ Invalid variance " + str(self.interval_variance) + ", using 0.25")
             self.interval_variance = 0.25
 
         variance_percent = int(self.interval_variance * 100)
@@ -46,10 +46,10 @@ class RandomMode(BaseMode):
         min_minutes = base_minutes * (1 - self.interval_variance)
         max_minutes = base_minutes * (1 + self.interval_variance)
 
-        print(f"✅ Random mode ready")
-        print(f"   Base interval: {base_minutes:.0f} minutes")
-        print(f"   Variance: ±{variance_percent}%")
-        print(f"   Range: {min_minutes:.0f}-{max_minutes:.0f} minutes")
+        print("✅ Random mode ready")
+        print("   Base interval: " + str(int(base_minutes)) + " minutes")
+        print("   Variance: ±" + str(variance_percent) + "%")
+        print("   Range: " + str(int(min_minutes)) + "-" + str(int(max_minutes)) + " minutes")
 
     def get_next_interval(self):
         """
@@ -74,8 +74,9 @@ class RandomMode(BaseMode):
         diff_minutes = random_minutes - base_minutes
         diff_percent = (diff_minutes / base_minutes) * 100
 
-        print(f"🎲 Randomized interval: {random_minutes:.1f} min "
-              f"({diff_percent:+.0f}% from {base_minutes:.0f} min base)")
+        print("🎲 Randomized interval: " + str(round(random_minutes, 1)) + " min " +
+              "(" + ("+" if diff_percent >= 0 else "") + str(int(diff_percent)) + "% from " +
+              str(int(base_minutes)) + " min base)")
 
         return randomized_interval
 
@@ -87,16 +88,15 @@ class RandomMode(BaseMode):
         max_minutes = base_minutes * (1 + self.interval_variance)
 
         print("=== 🎲 Random Mode ===")
-        print(f"Base interval: {base_minutes:.0f} minutes")
-        print(f"Variance: ±{variance_percent}%")
-        print(f"Actual range: {min_minutes:.0f}-{max_minutes:.0f} minutes")
+        print("Base interval: " + str(int(base_minutes)) + " minutes")
+        print("Variance: ±" + str(variance_percent) + "%")
+        print("Actual range: " + str(int(min_minutes)) + "-" + str(int(max_minutes)) + " minutes")
 
         if self.last_interval:
             last_minutes = self.last_interval / 60
-            print(f"Last scheduled: {last_minutes:.1f} minutes")
+            print("Last scheduled: " + str(round(last_minutes, 1)) + " minutes")
 
         # Light sensor info
-        from config import config_section
         SENSOR_DEFAULTS = {
             "light_threshold": 1000,
             "quiet_light_threshold": 3000
@@ -110,11 +110,12 @@ class RandomMode(BaseMode):
         amp_config = config_section(config, "amplifier", AMPLIFIER_DEFAULTS)
 
         print("\nLight-based volume control:")
-        print(f"  < {sensor_config['light_threshold']}: No sound (dark)")
-        print(f"  {sensor_config['light_threshold']}-{sensor_config['quiet_light_threshold']}: "
-              f"Quiet ({amp_config['quiet_volume']})")
-        print(f"  >= {sensor_config['quiet_light_threshold']}: "
-              f"Full ({amp_config['volume']})")
+        print("  < " + str(sensor_config['light_threshold']) + ": No sound (dark)")
+        print("  " + str(sensor_config['light_threshold']) + "-" +
+              str(sensor_config['quiet_light_threshold']) + ": Quiet (" +
+              str(amp_config['quiet_volume']) + ")")
+        print("  >= " + str(sensor_config['quiet_light_threshold']) + ": Full (" +
+              str(amp_config['volume']) + ")")
 
         print("\nButton controls:")
         print("  Short press: Trigger action immediately")
@@ -129,4 +130,4 @@ class RandomMode(BaseMode):
         # Show when next action will be
         if self.last_interval:
             next_minutes = self.last_interval / 60
-            print(f"⏰ Next automatic action in ~{next_minutes:.1f} minutes")
+            print("⏰ Next automatic action in ~" + str(round(next_minutes, 1)) + " minutes")
